@@ -1,0 +1,25 @@
+from django.conf.urls.defaults import patterns, include, url
+from django.contrib.auth.decorators import login_required
+from core import views
+from django.contrib import admin
+admin.autodiscover()
+
+urlpatterns = patterns('',
+   url(r'^login$',views.login,name='login'),
+   url(r'^fetch$',views.fetch,name='fetch'),
+   url(r'^register/$',views.register,name='register'),
+   url(r'^upload_image/$',views.upload_image,name='upload_image'),
+   url(r'^upload_postmortem_image/$',views.upload_postmortem_image,name='upload_postmortem_image'),
+   url(r'^anomaly_register/$',views.anomalyReg,name='anomaly_register'),
+   url(r'^$',views.monitoring,name='monitoring'), 
+   url(r'^monitoring/$',login_required(views.cmonitoring),name='cmonitoring'),
+   url(r'^scan_monitoring/$',views.scanmonitoring,name='scan_monitoring'),
+   url(r'^status/(?P<code>\w{0,50})/',views.asset_status,name='status'),
+   url(r'^orr_status/(?P<asset_code>\w{0,50})/',views.orr_status,name='orr_status'),
+   url(r'^postmortem_status/(?P<asset_code>\w{0,50})/',views.postmortem_status,name='postmortem_status'),
+   url(r'^support/$',login_required(views.support),name='support'), 
+   url(r'^analytics/$',login_required(views.analytics),name='analytics'),
+   url(r'^batch_report/$',views.postmortem_status,name='batch_report'),
+   url(r'^download_mediabook/$',login_required(views.download_mediabook),name='download_mediabook'),
+   url(r'^download_databook/$',login_required(views.download_workbook),name='download_databook'),
+) 

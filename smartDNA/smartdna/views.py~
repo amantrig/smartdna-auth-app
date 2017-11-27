@@ -1,0 +1,292 @@
+from django.contrib.auth import authenticate
+from django.shortcuts import render_to_response,HttpResponse,HttpResponseRedirect
+from django.contrib.auth.models import User
+from django.template.context import RequestContext
+from django.views.decorators.csrf import csrf_exempt
+from core.forms import AnomalyForm,LoginForm, CheckForm, FetchForm,DateRangeForm
+from core.models import Deployment
+from django.conf import settings
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+import datetime
+import json
+import random
+import string
+import time
+
+
+@csrf_exempt
+def login(request):
+  if request.method == "POST":
+    form = LoginForm(request.POST) # A form bound to the POST data
+    if form.is_valid(): # All validation rules pass
+      usrname = form.cleaned_data['username']
+      passwd = form.cleaned_data['password']
+      user = authenticate(username=usrname, password=passwd)
+      if user is not None:
+          if user.is_superuser:
+              data="admin"
+          elif usrname=="auditor":
+              data="auditor"
+          else:
+              data= "operator"
+      else:
+          data= "Invalid User"
+    else:
+        data= "Missing Data"
+  else:
+    data="Invalid Request"
+      
+  return render_to_response('raw.html', {
+        'data': data,
+    })
+
+@csrf_exempt
+def fetch(request):
+    data=""
+    if request.method == "POST":
+        form = FetchForm(request.POST) # A form bound to the POST data
+        if form.is_valid(): # All validation rules pass
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
+            asset_code = form.cleaned_data['asset_code']
+            print asset_code
+            user = authenticate(username=username, password=password)
+            if user is not None:
+             dep=Deployment.objects.filter(username__exact=username)
+             dep_path=dep.dep_path
+             #Check whether asset code is under anomaly condition or not
+	     from dep_path.Anomaly import isAnomaly
+             from dep_path.models import Verification
+             if isAnomaly(asset_code):
+                data="anomaly"
+                print "anomaly",asset_code
+             elif Verification.objects.filter(asset_code__iexact=asset_code,status=1).count()>0:
+                print "verification",asset_code
+                v=Verification.objects.filter(asset_code__iexact=asset_code,status=1)[0]
+                data=v.total_credential()
+             else:
+                data="none"
+            else:
+	       data="unauthorised access"
+        else:
+            data= ": Missing Data"
+    else:
+        data="Invalid Request"
+    return render_to_response('raw.html', {
+        'data': data,
+  })
+
+@csrf_exempt
+def register(request):
+   username = request.POST['username']
+   password = request.POST['password']
+   user = authenticate(username=username, password=password)
+   if user is not None:
+       data ="authorized user"
+   else:            
+      data = "Wrong username or password"
+   if data == "Wrong username or password":
+     return render_to_response('raw.html', {
+                 'data': data,
+      })
+
+   if request.method == "POST":
+     row_id="0"
+     form = CheckForm(request.POST) # A form bound to the POST data
+     if form.is_valid(): # All validation rules pass
+       asset_code= form.cleaned_data['asset_code']
+       credential= form.cleaned_data['credential']
+       d1= form.cleaned_data['d1']
+       d2= form.cleaned_data['d2']
+       d3= form.cleaned_data['d3']
+       h1= form.cleaned_data['h1']
+       h2= form.cleaned_data['h2']
+       h3= form.cleaned_data['h3']
+       status= form.cleaned_data['status']
+       operator= form.cleaned_data['operator']
+       loc= form.cleaned_data['location']
+       scan_auth= form.cleaned_data['scan_auth']
+       time_millis=str(form.cleaned_data['scan_time'])
+       scan_time=datetime.datetime.fromtimestamp(float(time_millis)/1e3).strftime('%Y-%m-%d %H:%M:%S')
+       print form.cleaned_data['scan_time']
+       bit_mask =form.cleaned_data['bit_mask']
+       try:
+        geoLoc,address=loc.split('$')
+        print geoLoc
+        shortadd=address[4:68]
+        if address=="null":
+           try:
+              print "try reverse geo-coding"
+              from pygeocoder import Geocoder
+              g1,g2=geoLoc.split('|')
+              result= Geocoder.reverse_geocode(float(g1), float(g2))
+	      fulladd=str(result[0])
+              shortadd=fulladd[4:68]
+           except:
+              print "failed reverse geo-coding"
+              shortadd="3rd Block,HRBR Layout,Kalyan Nagar,Bengaluru,Karnataka 560043"
+       except:
+        print "Failed in address parsing"
+        geoLoc="0.00|0.00"
+        shortadd="unknown"
+        address="unknown"
+
+       status_code=''
+       if status=='Registered':
+         status_code=1
+       if status=='Verified':
+         status_code=2
+       if status=='Tampered':
+         status_code=3
+         alert_tm(asset_code,status)
+       if status=='Tampered with line cut':
+         status_code=4
+         alert_tm(asset_code,status)
+       if status=='Invalid':
+         status_code=5
+       if status=='Void':
+         status_code=6
+       if status=='Barcode Error':
+         status_code=7
+       if status=='Label Error':
+         status_code=8
+       if status=='Height Error':
+         status_code=9
+      
+       dep=Deployment.objects.filter(username__exact=username)
+       dep_path=dep.dep_path
+       
+       from dep_path.save_data import saveData
+
+       saveData(asset_code,scan_time,credential,d1,d2,d3,h1,h2,h3,status_code,geoLoc,shortadd,operator,'/media/documents/'+asset_code+"_"+operator+"_"+time_millis+".png",bit_mask)
+       data="Success"
+     else:
+         data= ": Missing Data"
+   else:
+     data="Invalid Request"
+
+   return render_to_response('raw.html', {
+         'data': data,
+   })
+
+@csrf_exempt
+def upload_image(request):
+    print "image file"
+    if request.method == 'POST':
+       print "posted"
+       myfile = request.FILES['myfile']
+       filename = myfile.name
+       fd = open('/home/smartdna/live-3/smartDNA/media/documents/'+filename, 'wb+',00777)
+       print "open file object"
+       for chunk in myfile.chunks():
+           fd.write(chunk)
+       fd.close()
+       print filename,"Uploaded Successfully"
+       return HttpResponse("OK")
+    else:
+       return HttpResponse("Not Ok")
+
+@csrf_exempt
+def anomalyReg(request):
+    print "Trying to post anomaly"
+    if request.method == "POST":
+        print "Anomaly posted"
+        form = AnomalyForm(request.POST) # A form bound to the POST data
+        if form.is_valid():# All validation rules pass
+            print "Anomaly valid post"
+            username= form.cleaned_data['username']
+            password= form.cleaned_data['password']
+            asset_code= form.cleaned_data['asset_code']
+	    scan_time=str(datetime.datetime.now())
+            operator= form.cleaned_data['operator']
+	    location= form.cleaned_data['location']
+            print asset_code,operator
+            ostatus=""
+            user = authenticate(username=username, password=password)
+            if user is not None:
+		dep=Deployment.objects.filter(username__exact=username)
+             	dep_path=dep.dep_path
+             	from dep_path.models import Anomaly
+       	        anomaly=Anomaly(asset_code=asset_code,scan_time=scan_time,operator=operator,location=location)
+		anomaly.save()
+                data="Success"
+            else:
+                data="Wrong username or password"
+        else:
+            data= ": Missing Data"
+    else:
+        data="Invalid Request"
+    return render_to_response('raw.html', {'data': data,})
+
+def support(request):
+    with open('/home/smartdna/live-1/smartDNA/media/patrol-monitoring-application-guide.pdf', 'r') as pdf:
+        response = HttpResponse(pdf.read(), mimetype='application/pdf')
+        response['Content-Disposition'] = 'inline;filename=patrol-monitoring-application-guide.pdf'
+        return response
+    pdf.closed
+
+def analytics(request):
+   data="Feature on Demand"
+   return render_to_response('admin/analytics.html', {'data': data,})
+
+def monitoring(request):
+    return render_to_response('monitoring.html',
+            context_instance=RequestContext(request))
+
+def cmonitoring(request):
+    username=str(request.user)
+    pdata = Verification.objects.all()
+    dep=Deployment.objects.filter(username__exact=username)
+    dep_path=dep.dep_path
+    from dep_path.models import Verification
+    DateRangeForm(request.POST)
+    if request.method == 'POST':
+        form = DateRangeForm(request.POST)
+        if form.is_valid():
+         d1 = form.cleaned_data['day1']
+         d2 = (form.cleaned_data['day2']+datetime.timedelta(days=1))
+         store = form.cleaned_data['Store']
+         if d1<d2:
+          nosort="Remove Filter"
+          vdata=Verification.objects.filter(emp_id=store,scan_time__range=(d1,d2)).order_by('-scan_time')
+          c = str(vdata.count())
+          count_per_page=24;
+          if vdata.count()>24:
+             count_per_page=vdata.count();
+          paginator = Paginator(vdata,count_per_page )
+          page = request.GET.get('page')
+          try:
+            data = paginator.page(page)
+          except PageNotAnInteger:
+            data = paginator.page(1)
+          except EmptyPage:
+            data = paginator.page(paginator.num_pages)
+          total_records ="Total Records: "+c
+          return render_to_response('admin/cmonitoring.html', {'data': data,'form':form,'pdata':pdata,'nosort':nosort,"total_records":total_records},context_instance=RequestContext(request))
+         else:
+             nosort="Remove Filter"
+             wrange="Incorrect date range "
+             return render_to_response('admin/cmonitoring.html', {'pdata':pdata,'form':form,'wrange':wrange,'nosort':nosort,},context_instance=RequestContext(request))
+        else:
+	    nosort="Remove Filter"
+            error_message="Invalid date entered"
+            form = DateRangeForm()
+            return render_to_response('admin/cmonitoring.html', {'pdata':pdata,'error_message': error_message,'form':form,'nosort':nosort,},context_instance=RequestContext(request))
+    else:
+        vdata = Verification.objects.all().order_by('-scan_time')
+	c = str(vdata.count())
+	total_records ="Total Records: "+c
+        paginator = Paginator(vdata, 24)
+        page = request.GET.get('page')
+        form = DateRangeForm()
+        try:
+            data = paginator.page(page)
+        except PageNotAnInteger:
+            data = paginator.page(1)
+        except EmptyPage:
+            data = paginator.page(paginator.num_pages)
+        return render_to_response('admin/cmonitoring.html', {
+            'data': data,'pdata':pdata,'form':form,"total_records":total_records
+            },
+            context_instance=RequestContext(request))
+

@@ -1,0 +1,7 @@
+        {
+        	"smartdna": {
+        		"add": ["ActivityLog", "Alert", "AlertSubscriber", "Anomaly", "PostmortemImage", "Verification"],
+        		"delete": ["ActivityLog", "Alert", "AlertSubscriber", "Anomaly", "PostmortemImage", "Verification"],
+        		"change": ["ActivityLog", "Alert", "AlertSubscriber", "Anomaly", "PostmortemImage", "Verification"]
+        	}
+        }

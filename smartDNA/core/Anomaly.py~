@@ -1,0 +1,31 @@
+__author__ = 'linksmart'
+import re
+import os
+import sys
+
+os.environ['PYTHON_EGG_CACHE'] = "/tmp"
+PROJECT_PATH=os.path.dirname(os.path.realpath(__file__)).split("smartDNA")[0]
+path = PROJECT_PATH+'smartDNA/'
+if path not in sys.path:
+    sys.path.append(path)
+path = '/home/smartdna/linksmart/'
+sys.path.append(path)
+os.environ['DJANGO_SETTINGS_MODULE'] = 'smartDNA.settings'
+
+from datetime import datetime, timedelta
+from dep1.models import Verification
+
+def isAnomaly(asset_code):
+    isAnomaly=False
+    if Verification.objects.filter(asset_code=asset_code,status=3).count()>1:
+        obj= Verification.objects.filter(asset_code=asset_code,status=3).order_by('-id')[0]
+        #print obj_count,obj.id,obj.scan_time,datetime.now(),(datetime.now()-obj.scan_time)<timedelta(seconds =240)
+        if (datetime.now()-obj.scan_time)<timedelta(seconds =240):
+            isAnomaly=True
+        else:
+            isAnomaly=False
+    else:
+        isAnomaly=False
+    return isAnomaly
+	
+#isAnomaly(80122)

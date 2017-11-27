@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Dashboard|smartDNA Monitoring Portal</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,300,600,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="/media/css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="/media/css/bootstrap-responsive.css">
+    <link rel="stylesheet" type="text/css" href="/media/css/bootmetro.css">
+    <link rel="stylesheet" type="text/css" href="/media/css/bootmetro-tiles.css">
+    <link rel="stylesheet" type="text/css" href="/media/css/bootmetro-charms.css">
+    <link rel="stylesheet" type="text/css" href="/media/css/metro-ui-semilight.css">
+    <link rel="stylesheet" type="text/css" href="/media/css/icomoon.css">
+    <!-- Custom styles for this template -->
+    <!--<link href="dashboard.css" rel="stylesheet"> -->
+
+    <!-- Just for debugging purposes. Don't actually copy this line! -->
+    <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+<style>
+/*
+ * Base structure
+ */
+
+/* Move down content because we have a fixed navbar that is 50px tall */
+body {
+  padding-top: 50px;
+}
+
+
+/*
+ * Global add-ons
+ */
+
+.sub-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+
+/*
+ * Sidebar
+ */
+
+/* Hide for mobile, show later */
+.sidebar {
+  display: none;
+}
+@media (min-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: block;
+    padding: 70px 20px 20px;
+    background-color: #f5f5f5;
+    border-right: 1px solid #eee;
+  }
+}
+
+/* Sidebar navigation */
+.nav-sidebar {
+  margin-left: -20px;
+  margin-right: -21px; /* 20px padding + 1px border */
+  margin-bottom: 20px;
+}
+.nav-sidebar > li > a {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.nav-sidebar > .active > a {
+  color: #fff;
+  background-color: #428bca;
+}
+
+
+/*
+ * Main content
+ */
+
+.main {
+  padding: 20px;
+  margin-top:1%;
+}
+@media (min-width: 768px) {
+  .main {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+.main .page-header {
+  margin-top: 0;
+}
+
+
+/*
+ * Placeholder dashboard ideas
+ */
+
+.placeholders {
+  margin-bottom: 30px;
+  text-align: center;
+}
+.placeholders h4 {
+  margin-bottom: 0;
+}
+.placeholder {
+  margin-bottom: 20px;
+}
+.placeholder img {
+  border-radius: 50%;
+}
+</style>
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation" style="background-color:white;height:14%;">
+      <div class="container-fluid" >
+        <div class="navbar-header">
+            <a class="navbar-brand" href="#"><img src="/media/img/final-logo.jpg" style="width:16%;"></a><p style="margin-left:20%;color:red;">Retail Security Programme</p></a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-right" id="top-info">
+            <li style="color:#FF0000;"><a href="/"><b class="icon-dashboard" rel="tooltip" title="DASHBOARD"></b></a></li>
+            <li style="color:#FF0000;"><a href="/admin"><b class="icon-user-4" rel="tooltip" title="ADMIN PANEL"></b></a></li>
+            <li style="color:#FF0000;"><a href="#"><b class="icon-settings" rel="tooltip" title="SETTINGS"></b></a></li>
+          </ul>
+          <form class="navbar-form navbar-right" style="margin-top:1.3%;">
+            <input type="text" class="form-control" placeholder="Search...">
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar" style="margin-top:10%;">
+              <li class="active"><a href="/">Monitoring</a></li>
+              <li><a href="/tmonitoring/">Scan Monitoring</a></li>
+              <li class="active"><a href="#">Manage & Configure</a></li>
+              <li><a href="/update_admin_details">Add Alert Subscriber</a></li>
+              <li><a href="/get_vac_range/">Manage Tracking Code</a></li>
+<li class="active"><a href="/media/patrol-monitoring-application-guide.pdf">HELP</a></li>          
+</ul>
+        </div>
+<div class="span4" style="padding:2%;margin-top:7%;margin-left:34%;background-color:white;">            
+<!--<p style="color:red;margin-left:34%">Current Limit:{{current_limit}} </p>-->
+<form action="" method="POST">
+{% csrf_token %}
+    <table>
+        {{ form.as_table }}
+    </table>	
+	<input style="margin-left:36%;" class="btn btn-primary" type="submit" value="Update Details "/>
+</form>
+<p style="color:red;margin-left:34%;float:center;">{{message}}</p>
+</div>
+</div>
+<div class="span8" style="margin:left:30%;float:none;margin:0 auto;margin-top:4%;">
+<h2 style="color:#0066FF;">smartDNA™ Alert Notifications:</h1>
+<p>Deployments can add their details like <span style="color:red;">email-ids </span>and <span style="color:red;">mobile numbers </span>to get real time alert notification via email & SMS.Real time alert will be send to the privilleged users only for each tampering case found .</p>
+<p>
+<span style="color:red;">Note:<!--Currently SMS notification service is not working. It -->Note:SMS notification service requires SMS gateway provisioning, which can be made available on request</span>.
+</p>
+</div>
+</div>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="../../dist/js/bootstrap.min.js"></script>
+    <script src="../../assets/js/docs.min.js"></script>
+  </body>
+</html>
+

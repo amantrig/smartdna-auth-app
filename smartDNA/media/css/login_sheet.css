@@ -1,0 +1,22 @@
+.about{
+        float:left;
+        width:33%;
+      }
+.about-1{
+         float:left;
+         margin-left:4%;
+         width:29%;
+        }
+.about-2{
+         float:left;
+        width:33%;
+        }
+ .well{
+     margin-left:30%;
+    }
+ .about-panel{
+         width:100%;
+         display:inline-block;
+        }
+
+

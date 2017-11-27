@@ -1,0 +1,8 @@
+{
+"site_name":"default2",
+"site_title": "LinkSmart product authentication and monitoring portal",
+"database_name": "smartdnadb2",
+"deployment_host":"127.0.1.1",
+"deployment_port":"8001",
+"python_path":"/usr/local/lib/python2.7/dist-packages"
+}

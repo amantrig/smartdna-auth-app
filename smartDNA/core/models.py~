@@ -1,0 +1,41 @@
+import os, datetime
+from django.conf import settings
+from django.db import models
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+
+USER_CHOICES=(
+    ('Auditor','Auditor'),
+    ('Operator','Operator'),
+    ('Vendor','Vendor'),
+    )
+DEP_CHOICES=(
+
+)
+
+class Logger(models.Model):
+    login_time = models.DateTimeField(verbose_name="Login Time",blank=True,auto_now=True)
+    user = models.CharField(verbose_name="User",max_length=32)
+    city = models.CharField(verbose_name="City",max_length=32,null=True, blank=True)
+    postal_code = models.CharField(verbose_name="Postal Code",max_length=32,null=True,blank=True,)
+    country_name=models.CharField(verbose_name="Country",max_length=32,null=True,blank=True,)
+    country_code=models.CharField(verbose_name="Country Code",max_length=32,null=True,blank=True,)
+    ip_address=models.CharField(verbose_name="IP Address",max_length=32,null=True,blank=True,)
+    class Meta:
+	verbose_name_plural="User Login Records"
+
+
+class Deployment(models.Model):  
+    user = models.OneToOneField(User)  
+    user_type=models.CharField(verbose_name="User Type",max_length=32,choices=USER_CHOICES, default="Auditor")
+    dep_name = models.CharField(verbose_name="Deployment Name",max_length=16, default="")
+    dep_path = models.CharField(verbose_name="Deployment Path",max_length=16, default="")
+
+    def __str__(self):  
+          return "%s's profile" % self.user  
+
+def create_user_profile(sender, instance, created, **kwargs):  
+    if created:  
+       profile, created = Deployment.objects.get_or_create(user=instance)  
+
+post_save.connect(create_user_profile, sender=User)

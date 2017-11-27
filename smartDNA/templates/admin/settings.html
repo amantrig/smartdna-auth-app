@@ -1,0 +1,134 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+{% load admin_static %}
+{% load smartdna_tags %}
+<head> 
+{% block extrahead %}
+{% endblock %}
+{# Additional CSS includes #}
+{% block extrastyle %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/smartdna.css' %}" media="all">
+{% endblock %}
+{% block extrajs %}
+<script type="text/javascript" src="{% static 'js/my_project.js' %}"></script>
+{% endblock %}
+</head>
+
+<body> 
+<div id="content-main">
+{% block content %}
+    {% if app_list %}
+      {% for app in app_list %}
+        <div class="module">
+        <table class="table-overview applist" summary="{% blocktrans with name=app.name %}Models available in the {{ name }} application.{% endblocktrans %}">
+            <caption><a href="{{ app.app_url }}" class="section">{% trans app.name %}</a></caption>
+            {% for model in app.models %}
+              <tr>
+                <th scope="row">{{ model.name }}</th>
+                {% if model.admin_url %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink icon">{% trans 'Change' %}</a>
+                  </td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+
+                {% if model.add_url %}
+                  <td><a href="{{ model.add_url }}" class="addlink icon"><i
+                          class="icon-plus-sign icon-alpha75"></i>{% trans 'Add' %}
+                  </a></td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+<div style="padding:0;" class="container-fluid">
+<div class="table-responsive">
+<table class="table table-striped">
+<caption style="text-align:left;"><h2>Current Configurations <a href=/settings_configure/>Edit</a></h2></caption>
+              <thead>
+                <tr>
+                    <th>Setting Attribute</th>
+		    <th>Current Value</th>
+                </tr>
+              </thead>
+              </thead>
+              <tbody>
+             	<tr>
+                   <td class="align-left">Deployment User</td>
+		   <td class="align-left">{{dep_name}}</td>
+                </tr>
+             	<tr>
+                   <td class="align-left">Deployment Type</td>
+		   <td class="align-left">{{dep_type}}</td>
+                </tr>
+             	<tr>
+                   <td class="align-left">Email Host</td>
+		   <td class="align-left">{{email_host}}</td>
+                </tr>
+             	<tr>
+                   <td class="align-left">Email Port</td>
+		   <td class="align-left">{{email_port}}</td>
+                </tr>
+                <tr>
+                   <td class="align-left">Email User</td>
+		   <td class="align-left">{{email_username}}</td>
+                </tr>
+             	<tr>
+                   <td class="align-left">Email Password</td>
+		   <td class="align-left" id="password">{{email_password}}</td>
+                </tr>
+             	<tr>
+                   <td class="align-left">Clean-up Interval (in days)</td>
+		   <td class="align-left">{{expiry_time}}</td>
+                </tr>
+              </tbody>
+</table>
+<p style="color:red;"> Note: All verification records will be cleaned-up/deleted in {{expiry_time}} days. Currently clean-up frequency is {{expiry_time}} days but it can be configured to 90 days and above as per requirement .</p> 
+</div>
+{% endblock %}
+{% block footer_links %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+{% block header_content %}
+  {{ block.super }}
+<div class="header-content">
+<!-- First icon column -->
+<div class="header-column icon">
+<i class="icon-ok-circle"></i><br>
+            <!--<i class="icon-cog"></i>-->
+        </div>
+        <div class="header-column" style="margin-right: 20px">
+            <a href="/dashboard/main/" class="grey">DASHBOARD</a><br>
+            <!--<a href="" class="grey">One more link</a>-->
+        </div>
+        {% if user.is_superuser %}
+            <!-- Second icon column -->
+            <div class="header-column icon">
+                <i class="icon-cog"></i>
+            </div>
+            <div class="header-column">
+                <a href="/settings/" class="grey">Settings</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+Footer branding name (center) 
+{% block footer_branding %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+
+{# Footer copyright (right side) 
+{% block copyright %}
+Copyright &copy; 2016-17 <a href="http://www.linksmartdna.com/" target="_blank">Linksmart Technologies</a><br>
+sAMM <span>{% app_version %}</span>
+{% endblock %}
+</body>

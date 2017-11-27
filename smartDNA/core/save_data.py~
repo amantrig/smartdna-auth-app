@@ -1,0 +1,36 @@
+import Image,os,sys
+import ImageFont, ImageDraw, ImageOps
+os.environ['PYTHON_EGG_CACHE'] = "/tmp"
+path = '/home/ubuntu/live-4/smartDNA/'
+if path not in sys.path:
+    sys.path.append(path)
+path = '/home/ubuntu/live-4/'
+sys.path.append(path)
+os.environ['DJANGO_SETTINGS_MODULE'] = 'smartDNA.settings'
+
+from dep1.models import Verification,AssetWithPeriodicScanPolicy
+
+def saveData(asset_code,scan_time,credential,d1,d2,d3,h1,h2,h3,status,geoLocation,location,emp_id,image,bit_mask):
+    v=Verification(asset_code=asset_code,
+                      scan_time=scan_time,
+                      credential=credential,
+                      d1=d1,
+                      d2=d2,
+                      d3=d3,
+                      h1=h1,
+                      h2=h2,
+                      h3=h3,
+                      status=status,
+                      geoLocation=geoLocation,
+                      location=location,
+                      emp_id=emp_id,
+                      image=image,
+                      bit_mask=bit_mask
+                      )
+       v.save()
+       if AssetWithPeriodicScanPolicy.objects.filter(asset_code__exact=asset_code).count()>0:
+           #print "Going to recent scan time updated to: ",scan_time
+           awp=AssetWithPeriodicScanPolicy.objects.get(asset_code__exact=asset_code)
+           awp.rec_scan_time=scan_time
+           awp.save()
+           #print "recent scan time updated to: ",scan_time

@@ -1,0 +1,226 @@
+import os
+from django.contrib import admin
+from django import forms
+import datetime
+
+depn=os.path.dirname(os.path.realpath(__file__)).split("/")[-1]
+from django.db.models.loading import get_model
+Anomaly=get_model(depn,'Anomaly')
+Alert=get_model(depn,'Alert')
+AlertSubscriber=get_model(depn,'AlertSubscriber')
+Verification=get_model(depn,'Verification')
+ActivityLog=get_model(depn,'ActivityLog')
+PostmortemImage=get_model(depn,'PostmortemImage')
+from core.utils import trim_tuple
+
+print depn,PostmortemImage
+
+def recent_scan_time(asset_code):
+    allid = []
+    allv=Verification.objects.filter(asset_code__exact=asset_code)
+    for xv in allv:
+        allid.append(xv.id)
+    #print allid
+    maxid=max(allid)
+    mid=Verification.objects.get(id__exact=maxid)
+    #print "recent Scan time ",mid.scan_time
+    return mid.scan_time
+
+class VerificationAdmin(admin.ModelAdmin):
+    list_display   = ('colored_asset_code', 'scan_time','colored_status','modified','location','product_details','auth_code','operator',"thumbnail")
+    list_filter    = ('status','operator')
+    ordering       = ('-scan_time',)
+    search_fields  = ('asset_code','location','product_details','auth_code')
+    actions=['really_delete_selected','bulk_release']
+    change_form_template = 'admin/change_form.html'
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['show_save'] = False
+	extra_context['show_tools'] = False
+        return super(VerificationAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
+	
+
+    def changelist_view(self, request, extra_context=None):
+        try:
+            page_title = Verification._meta.verbose_name_plural.title()
+            ctx = {'title': page_title}
+            return super(VerificationAdmin, self).changelist_view(request, extra_context=ctx)
+        except:
+            page_title = Verification._meta.verbose_name.title()
+            ctx = {'title': page_title}
+            return super(VerificationAdmin, self).changelist_view(request, extra_context=ctx)
+
+    def get_actions(self, request):
+        actions = super(VerificationAdmin, self).get_actions(request)
+        del actions['delete_selected']
+        return actions
+
+    def has_delete_permission(self, request, obj=Verification()):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        pass
+
+    def bulk_release(self,request,queryset):
+        for obj in queryset:
+            print "kukus kukus"
+            obj.release()
+        if queryset.count() == 1:
+            message_bit="1 record "
+        else:
+            message_bit="%s records "%queryset.count()
+        self.message_user(request, "%s successfully Released!" % message_bit)
+    bulk_release.short_description = "Release Selected Entries"
+
+class AlertAdmin(admin.ModelAdmin):
+    list_display=("tracking_code","alert_time","alert_message","ip_address")
+    ordering = ('-id',)
+    search_fields  = ('tracking_code',)
+    actions = None
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['show_save'] = False
+	extra_context['show_tools'] = False
+        return super(VerificationAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
+
+    def changelist_view(self, request, extra_context=None):
+        try:
+            page_title = Alert._meta.verbose_name_plural.title()
+            ctx = {'title': page_title}
+            return super(AlertAdmin, self).changelist_view(request, extra_context=ctx)
+        except:
+            page_title = Alert._meta.verbose_name.title()
+            ctx = {'title': page_title}
+            return super(AlertAdmin, self).changelist_view(request, extra_context=ctx)
+
+    def has_delete_permission(self, request, obj=Verification()):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        pass
+
+class AlertSubscriberAdmin(admin.ModelAdmin):
+    list_display = ('subscriber','email','alert_type')
+    ordering = ('-id',)
+
+    def changelist_view(self, request, extra_context=None):
+        try:
+            page_title = AlertSubscriber._meta.verbose_name_plural.title()
+            ctx = {'title': page_title}
+            return super(AlertSubscriberAdmin, self).changelist_view(request, extra_context=ctx)
+        except:
+            page_title = AlertSubscriber._meta.verbose_name.title()
+            ctx = {'title': page_title}
+            return super(AlertSubscriberAdmin, self).changelist_view(request, extra_context=ctx)
+
+class AnomalyAdmin(admin.ModelAdmin):
+    list_display=("asset_code","scan_time","operator","location")
+    ordering = ('-id',)
+    search_fields  = ('asset_code',)
+    actions = None
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['show_save'] = False
+	extra_context['show_tools'] = False
+        return super(VerificationAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
+
+    def changelist_view(self, request, extra_context=None):
+        try:
+            page_title = Anomaly._meta.verbose_name_plural.title()
+            ctx = {'title': page_title}
+            return super(AnomalyAdmin, self).changelist_view(request, extra_context=ctx)
+        except:
+            page_title = Anomaly._meta.verbose_name.title()
+            ctx = {'title': page_title}
+            return super(AnomalyAdmin, self).changelist_view(request, extra_context=ctx)
+
+    def has_delete_permission(self, request, obj=Verification()):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        pass
+
+class ActivityLogAdmin(admin.ModelAdmin):
+    list_display=("staff","activity_time","ip_address","city","postal_code","remark")
+    ordering=('-id',)
+    search_fields=("postal_code","remark",)
+    actions = None
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['show_save'] = False
+	extra_context['show_tools'] = False
+        return super(ActivityLogAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
+
+    def changelist_view(self, request, extra_context=None):
+        try:
+            page_title = ActivityLog._meta.verbose_name_plural.title()
+            ctx = {'title': page_title}
+            return super(ActivityLogAdmin, self).changelist_view(request, extra_context=ctx)
+        except:
+            page_title = ActivityLog._meta.verbose_name.title()
+            ctx = {'title': page_title}
+            return super(ActivityLogAdmin, self).changelist_view(request, extra_context=ctx)
+
+    def has_delete_permission(self, request, obj=Verification()):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        pass
+
+class PostmortemImageAdmin(admin.ModelAdmin):
+    list_display = trim_tuple(PostmortemImage._meta.get_all_field_names(),"id")
+    actions = None
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['show_save'] = False
+	extra_context['show_tools'] = False
+        return super(PostmortemImageAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
+
+    def changelist_view(self, request, extra_context=None):
+        try:
+            page_title = ActivityLog._meta.verbose_name_plural.title()
+            ctx = {'title': page_title}
+            return super(PostmortemImageAdmin, self).changelist_view(request, extra_context=ctx)
+        except:
+            page_title = ActivityLog._meta.verbose_name.title()
+            ctx = {'title': page_title}
+            return super(PostmortemImageAdmin, self).changelist_view(request, extra_context=ctx)
+
+    def has_delete_permission(self, request, obj=Verification()):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        pass
+
+admin.site.register(Verification,VerificationAdmin)
+admin.site.register(Alert,AlertAdmin)
+admin.site.register(AlertSubscriber,AlertSubscriberAdmin)
+admin.site.register(Anomaly,AnomalyAdmin)
+admin.site.register(ActivityLog,ActivityLogAdmin)
+admin.site.register(PostmortemImage,PostmortemImageAdmin)
+

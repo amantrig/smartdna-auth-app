@@ -1,0 +1,120 @@
+from django.contrib.admin.forms import AdminAuthenticationForm
+from django.core.exceptions import ValidationError
+from django.core import validators
+from django import forms
+from django.contrib.admin.sites import AdminSite
+import datetime
+from django.core.validators import RegexValidator
+from phonenumber_field.formfields import PhoneNumberField
+from django.contrib.auth.models import User
+import phonenumbers
+
+ALERT_CHOICE=(
+        (1,"Tamper Alert"),
+        (2,"Periodic Scan Alert"),
+        )
+
+def get_branches():
+    branches=User.objects.values_list('first_name')
+    MY_CHOICES=(('jayanagar', 'jayanagar'),
+                ('jpnagar', 'jpnagar'),
+                ('kamanahalli','kamanahalli'),
+		('malleswaram', 'malleswaram'))
+    #tuple(branches)
+    print MY_CHOICES
+    return MY_CHOICES
+
+class PhoneField(forms.Field):
+    default_error_messages = {
+        'not_a_number': u'please provide correct number with country code e.g.:+917733230990',
+    }
+    def to_python(self, uvalue):
+       if uvalue in validators.EMPTY_VALUES:
+        return None     
+       value=str(uvalue)
+       try:
+        x = phonenumbers.parse(value, None)
+        print phonenumbers.is_possible_number(x)
+        print phonenumbers.is_valid_number(x) 
+        isvalid=phonenumbers.is_valid_number(x)
+        if isvalid:
+         return value
+        else:            
+         raise ValidationError(self.error_messages['not_a_number'])
+       except:
+        raise ValidationError(self.error_messages['not_a_number'])
+
+
+class LoginForm(forms.Form):
+  username = forms.CharField(max_length=64)
+  password = forms.CharField(max_length=64)
+ # auth = forms.CharField(max_length=64)
+
+class CheckForm(forms.Form):
+  asset_code= forms.CharField(max_length=64) 
+  credential= forms.CharField(max_length=128)
+  d1= forms.CharField(max_length=8)
+  d2= forms.CharField(max_length=8)
+  d3= forms.CharField(max_length=8)
+  h1=forms.CharField(max_length=8)
+  h2=forms.CharField(max_length=8)
+  h3=forms.CharField(max_length=8)
+  status= forms.CharField(max_length=64)
+  operator= forms.CharField(max_length=64)
+  location= forms.CharField(max_length=128)
+  scan_auth= forms.CharField(max_length=64)
+  scan_time= forms.CharField(max_length=64)
+  bit_mask= forms.CharField(max_length=128)
+
+class OrrCheckForm(forms.Form):
+    username = forms.CharField(max_length=64)
+    password = forms.CharField(max_length=64)
+    asset_code= forms.CharField(max_length=64)
+    orrStatus= forms.CharField(max_length=64)
+
+class AnomalyForm(forms.Form):
+    username = forms.CharField(max_length=64)
+    password = forms.CharField(max_length=64)
+    asset_code= forms.CharField(max_length=64)
+    operator= forms.CharField(max_length=64)
+    location= forms.CharField(max_length=64)
+
+class FetchForm(forms.Form):
+  asset_code= forms.CharField(max_length=64)
+  
+class DateRangeForm(forms.Form):
+    branches=User.objects.values_list('first_name', flat=True)
+    day1=forms.DateField(initial=datetime.date.today()-datetime.timedelta(days=1),label="FROM")
+    day2 = forms.DateField(initial=datetime.date.today(),label="UPTO")
+    Store = forms.ChoiceField(choices=[], required=False)
+    def __init__(self, *args, **kwargs):
+        super(DateRangeForm, self).__init__(*args, **kwargs)
+        self.fields['Store'] = forms.ChoiceField(choices=get_branches())
+#widget = SelectDateWidget
+
+class AssetCode_RangeForm(forms.Form):
+      username = forms.CharField(label="Admin",initial='admin',max_length=16)
+      password = forms.CharField(label='Password',widget=forms.PasswordInput,max_length=16)
+      max_range = forms.CharField(label='Max Limit',max_length=16)
+
+class AdminDetailsForm(forms.Form):
+    username = forms.CharField(label="Admin",max_length=16)
+    password = forms.CharField(label="Password",widget=forms.PasswordInput)
+    email_id= forms.EmailField(label="Email ID")
+    mobile_number= PhoneField(label="Mobile Number")
+    alert_type= forms.ChoiceField(label="Alert Type",choices=ALERT_CHOICE)
+'''class ModifiedForm(AdminAuthenticationForm):
+    """ Subclass which extends the max length of the username field. """
+    auth_fact = forms.CharField(max_length=64,required=False)
+
+AdminSite.login_form = ModifiedForm
+'''
+class periodicScanSetterForm(forms.Form):
+        username = forms.CharField(max_length=16)
+        password = forms.CharField(widget=forms.PasswordInput)
+        asset_code1 = forms.CharField(max_length=16)
+        asset_code2 = forms.CharField(max_length=16)
+        scanning_interval = forms.CharField(max_length=32,initial="4:30 hrs")
+
+class DocumentForm(forms.Form):
+      docfile = forms.FileField(label='Select a file',help_text='max. 42 megabytes')

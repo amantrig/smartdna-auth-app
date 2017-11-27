@@ -1,0 +1,209 @@
+import os
+import sys
+import xlwt
+import datetime
+import os
+import zipfile
+import tempfile
+import shutil
+import time
+from pysimplesoap.client import SoapClient
+from django.forms.forms import pretty_name
+from django.core.exceptions import ObjectDoesNotExist
+from cStringIO import StringIO
+from django.core.files.base import ContentFile
+from django.shortcuts import HttpResponse
+from os.path import basename
+from PIL import Image
+from django.core.mail import send_mail
+
+os.environ['PYTHON_EGG_CACHE'] = "/tmp"
+
+PROJECT_PATH=os.path.dirname(os.path.realpath(__file__)).split("smartDNA")[0]
+path = PROJECT_PATH+'smartDNA/'
+if path not in sys.path:
+    sys.path.append(path)
+path = os.path.dirname(os.path.realpath(__file__)).split("smartDNA")[0]
+sys.path.append(path)
+os.environ['DJANGO_SETTINGS_MODULE'] = 'smartDNA.settings'
+
+from django.conf import settings
+
+WORK_PATH=os.path.dirname(os.path.realpath(__file__)).split("smartDNA")[0]+'smartDNA/'
+
+HEADER_STYLE = xlwt.easyxf('font: bold on')
+DEFAULT_STYLE = xlwt.easyxf()
+CELL_STYLE_MAP = (
+    (datetime.date, xlwt.easyxf(num_format_str='DD/MM/YYYY')),
+    (datetime.time, xlwt.easyxf(num_format_str='HH:MM')),
+    (bool,          xlwt.easyxf(num_format_str='BOOLEAN')),
+)
+
+def zip_file(src, dst):
+    zf = zipfile.ZipFile("%s.zip" % (dst), "w", zipfile.ZIP_DEFLATED)
+    abs_src = os.path.abspath(src)
+    for dirname, subdirs, files in os.walk(src):
+        for filename in files:
+            absname = os.path.abspath(os.path.join(dirname, filename))
+            arcname = absname[len(abs_src) + 1:]
+            print 'zipping %s as %s' % (os.path.join(dirname, filename),
+                                        arcname)
+            zf.write(absname, arcname)
+    zf.close()
+
+def zip_file2(src, stream):
+    zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED)
+    abs_src = os.path.abspath(src)
+    for dirname, subdirs, files in os.walk(src):
+        for filename in files:
+            absname = os.path.abspath(os.path.join(dirname, filename))
+            arcname = absname[len(abs_src) + 1:]
+            print 'zipping %s as %s' % (os.path.join(dirname, filename),
+                                        arcname)
+            zf.write(absname, arcname)
+    zf.close()
+    shutil.rmtree(src)
+
+def multi_getattr(obj, attr, default=None):
+    attributes = attr.split(".")
+    for i in attributes:
+        try:
+            obj = getattr(obj, i)
+        except AttributeError:
+            if default:
+                return default
+            else:
+                raise
+    return obj
+
+def get_column_head(obj, name):
+    name = name.rsplit('.', 1)[-1]
+    return pretty_name(name)
+
+def get_column_cell(obj, name):
+    try:
+        attr = multi_getattr(obj, name)
+    except ObjectDoesNotExist:
+        return None
+    if hasattr(attr, '_meta'):
+        # A Django Model (related object)                                                                                                                                                                          
+        return unicode(attr).strip()
+    elif hasattr(attr, 'all'):
+        # A Django queryset (ManyRelatedManager)                                                                                                                                                                   
+        return ', '.join(unicode(x).strip() for x in attr.all())
+    return attr
+
+def queryset_to_workbook(queryset, columns, header_style=None,
+                         default_style=None, cell_style_map=None):
+    workbook = xlwt.Workbook()
+    report_date = datetime.date.today()
+    sheet_name = 'Export {0}'.format(report_date.strftime('%Y-%m-%d'))
+    sheet = workbook.add_sheet(sheet_name)
+
+    if not header_style:
+        header_style = HEADER_STYLE
+    if not default_style:
+        default_style = DEFAULT_STYLE
+    if not cell_style_map:
+        cell_style_map = CELL_STYLE_MAP
+
+    obj = queryset[0]
+    for y, column in enumerate(columns):
+        value = get_column_head(obj, column)
+        sheet.write(0, y, value, header_style)
+
+    for x, obj in enumerate(queryset, start=1):
+        for y, column in enumerate(columns):
+            print column
+	    if str(column) == "image":
+	     value =str(getattr(obj, "image"))
+	    else:
+             value = get_column_cell(obj, column)
+            print value
+            style = default_style
+            for value_type, cell_style in cell_style_map:
+                if isinstance(value, value_type):
+                    style = cell_style
+            sheet.write(x, y, value, style)
+
+    return workbook
+
+def queryset_to_mediabook(queryset):
+    directory=WORK_PATH+"media/documents/export_media_"+str(time.time())
+    if not os.path.exists(directory):
+    	os.makedirs(directory)
+    for obj in queryset:
+	d1,d2,d3,file_name=str(obj.image).split('/')
+	#print file_name
+	#os.chmod(WORK_PATH+"media/documents/"+file_name,0777)
+	if os.path.isfile(WORK_PATH+"media/documents/"+file_name):
+	 shutil.copyfile(WORK_PATH+"media/documents/"+file_name,directory+"/"+file_name)
+    zip_file(directory+"/",directory)
+    return directory+".zip"
+
+def export_media2(queryset,username):
+    stream = StringIO()
+    directory=WORK_PATH+"media/documents/exported_media_files_"+username+"_"+str(time.time())
+    if not os.path.exists(directory):
+    	os.makedirs(directory)
+    for obj in queryset:
+	d1,d2,d3,file_name=str(obj.image).split('/')
+	if os.path.isfile(WORK_PATH+"media/documents/"+file_name):
+	 shutil.copyfile(WORK_PATH+"media/documents/"+file_name,directory+"/"+file_name)
+    zip_file2(directory+"/",stream,)
+    response = HttpResponse(stream.getvalue(), mimetype='application/zip')
+    response['Content-Disposition'] = 'attachment;'+ 'filename="'+'exported_media_files_'+username+'_'+str(time.time())+'.zip"'
+    return response
+
+def export_media(queryset):
+    directory=WORK_PATH+"media/documents/"
+    stream = StringIO()
+    temp_zip_file = zipfile.ZipFile(stream, 'w')
+    for obj in queryset:
+     if os.path.isfile(WORK_PATH+str(obj.image)):
+      temp_zip_file.write(WORK_PATH+str(obj.image),directory)
+           
+    temp_zip_file.close()
+    response = HttpResponse(stream.getvalue(), mimetype='application/zip')
+    response['Content-Disposition'] = 'attachment; filename="media_files.zip"'
+    return response
+    
+#Ask any client to create same kind of API where just URL changes and create a URL_CONF.JOSN. Store all
+#the URLs in ther and just parse in in the post_data_remote_serever method.
+def post_data_2sv(asset_code,time_millis,credential,status,operator,geo_location,location,mobile_number,image,atm_id,bit_mask):
+    scan_time=datetime.datetime.fromtimestamp(float(time_millis)/1e3).strftime('%m/%d/%Y %H:%M:%S')
+    #print scan_time, type(scan_time)
+    try:
+     client = SoapClient(wsdl="http://221.135.139.45:8112/LinkSmartWS.asmx?WSDL",trace=False,)
+     response = client.ScanData(asset_code=asset_code,scan_time=scan_time,credential=credential,status=status,Operator=operator,geo_location=geo_location,location=location,mobile_number=mobile_number,image=image,atm_id=atm_id,bit_mask=bit_mask)
+     #print response
+     result = response['ScanDataResult']['Remark']
+     print result
+    except:
+     result = "server error"
+     print result
+
+def compress_image(imagefile):
+    response=False
+    try:
+     filename, file_extension = os.path.splitext(imagefile)
+     print basename(filename)
+     im = Image.open(imagefile)
+     im.convert('RGB').save(filename+".jpg", 'JPEG')
+     #bg = Image.new("RGBA", im.size, (255,255,255))
+     #bg.paste(im,(0,0),im) #OR
+     #bg = Image.new("RGB", im.size, (255,255,255))
+     #bg.paste(im,im)
+     #bg.save(filename+".jpg")#,quality=50)
+     #print "image file size "+str(len((StringIO(open(filename+".jpg",'rb').read()).read())))
+     response=True
+    except:
+     response=False
+    print "compression result: "+str(response)
+    return response
+
+def send_confirmation(email_id,asset_code):
+    print email_id,asset_code
+    message="Product Serial Number "+asset_code+" authetincated by Su-Kam."
+    send_mail('smartDNA authentication',message,settings.EMAIL_HOST_USER,[email_id],fail_silently=False)
+

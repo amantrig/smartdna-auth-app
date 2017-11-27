@@ -1,0 +1,25 @@
+import os
+import sys
+
+os.environ['PYTHON_EGG_CACHE'] = "/tmp"
+path = PROJECT_PATH+'smartDNA/'
+if path not in sys.path:
+    sys.path.append(path)
+path = '/home/smartdna/linksmart/'
+sys.path.append(path)
+os.environ['DJANGO_SETTINGS_MODULE'] = 'smartDNA.settings'
+from dep1.models import Verification
+import datetime
+
+def count_in_range(from_last):
+    vdata=Verification.objects.filter(scan_time__range=(from_last, datetime.datetime.now())).order_by('-scan_time')
+    c = str(vdata.count())
+    print c
+
+def update_column(from_last,location,geo_location):
+    field_dict = {'location':location,'geo_location':geo_location}
+    vdata=Verification.objects.filter(scan_time__range=(from_last, datetime.datetime.now())).order_by('-scan_time')
+    #vdata.location=location
+    #vdata.geo_location=geo_location
+    vdata.update(**field_dict)
+    print str(vdata.count())," records updated to:",location

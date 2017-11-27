@@ -1,0 +1,10 @@
+Steps to Deploy new Application
+
+1.Go-To directory smartDNA (projest's root directory) Add Application in setting.py under INSTALLED_APPS
+e.g.:'smartDNA.dep3'
+2. Run the command "cp -r dep1/ "depname" && python manage.py syncdb"
+3. Login to the portal as admin and create/add users for the application in Auth/Users table.Add as many users as required.
+	a.Protocols for username: 
+	  auditor's username should be something like "companyname_auditor"
+	  e.g: "titan_auditor"
+	b.Then add all the users in core/Deployment table. Field in table username, password, deployment name (company name) and deployment path. This path is the name of directory name of application. 

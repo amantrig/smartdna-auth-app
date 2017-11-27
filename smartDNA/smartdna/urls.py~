@@ -1,0 +1,17 @@
+from django.conf.urls.defaults import patterns, include, url
+from django.contrib.auth.decorators import login_required
+from core import views
+from django.contrib import admin
+admin.autodiscover()
+
+urlpatterns = patterns('',
+   url(r'^login$',views.login,name='login'),
+   url(r'^fetch$',views.fetch,name='fetch'),
+   url(r'^register/$',views.register,name='register'),
+   url(r'^anomaly_register/$',views.anomalyReg,name='anomaly_register'),
+   url(r'^$',views.monitoring,name='monitoring'), 
+   url(r'^monitoring/$',login_required(views.cmonitoring),name='monitoring'),
+   url(r'^support/$',login_required(views.support),name='support'), 
+   url(r'^analytics/$',login_required(views.analytics),name='analytics'),
+)
+  

@@ -1,0 +1,10 @@
+{% extends "suit/error_base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans 'Access Denied'|capfirst %}{% endblock %}
+
+{% block error %}{% trans 'error'|capfirst %} 403{% endblock %}
+
+{% block content %}
+  {% trans "We're sorry, but you are not authorized to view this page." %}
+{% endblock %}

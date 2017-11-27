@@ -1,0 +1,8 @@
+{
+"site_name":"track_trace",
+"site_title": "Track Trace- sAMM Portal",
+"database_name": "tracktracedb",
+"deployment_host":"127.0.1.1",
+"deployment_port":"8004",
+"python_path":"/home/smartdna/ENVS/sauth-env/local/lib/python2.7/site-packages"
+}

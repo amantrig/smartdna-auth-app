@@ -1,0 +1,694 @@
+from django.contrib.auth import authenticate
+from django.shortcuts import render_to_response,HttpResponse,HttpResponseRedirect
+from django.template.context import RequestContext
+from django.views.decorators.csrf import csrf_exempt
+from core.forms import AnomalyForm,LoginForm, CheckForm, FetchForm,DateRangeForm,BatchReportForm,SettingsForm
+from core.models import Deployment
+from django.conf import settings
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from Anomaly import isAnomaly
+from core.model_utils import identify_noise,tamp_state
+from core.utils import queryset_to_mediabook,export_media,export_media2,post_data_2sv,compress_image
+from os.path import basename
+import os
+import datetime
+import json
+import time
+PROJECT_PATH=os.path.dirname(os.path.realpath(__file__)).split("smartDNA")[0]
+
+#This API is used by mobile client to login into application
+@csrf_exempt
+def login(request):
+  if request.method == "POST":
+    form = LoginForm(request.POST) # A form bound to the POST data
+    if form.is_valid(): # All validation rules pass
+      usrname = form.cleaned_data['username']
+      passwd = form.cleaned_data['password']
+      user = authenticate(username=usrname, password=passwd)
+      dep=Deployment.objects.filter(user=user)
+      if user is not None:
+          user_type=dep[0].user_type
+          if user.is_superuser:
+              data="admin"
+          elif user_type=="Operator":
+              data="operator"
+	  elif user_type=="Vendor":
+	      data="vendor"
+          else:
+              data= "auditor"
+      else:
+          data= "Invalid User"
+    else:
+        data= "Missing Data"
+  else:
+    data="Invalid Request"
+      
+  return render_to_response('raw.html', {
+        'data': data,
+    })
+
+@csrf_exempt
+def fetch(request):
+    data=""
+    if request.method == "POST":
+        form = FetchForm(request.POST) # A form bound to the POST data
+        if form.is_valid(): # All validation rules pass
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
+            asset_code = form.cleaned_data['asset_code']
+	    company_name = form.cleaned_data['company_name']
+            print asset_code
+            user = authenticate(username=username, password=password)
+            if user is not None:
+             dep=Deployment.objects.filter(user=user)
+    	     dep_path=dep[0].dep_path
+             #Check whether asset code is under anomaly condition or
+	     from django.utils.importlib import import_module
+	     Anomaly = import_module(dep_path+'.Anomaly')
+             from django.db.models.loading import get_model
+             Verification = get_model(dep_path, 'Verification')
+	     print dep_path
+             if Anomaly.isAnomaly(asset_code):
+                data="anomaly"
+                print "anomaly",asset_code
+             elif Verification.objects.filter(asset_code__iexact=asset_code,status=1,company_name=company_name).count()>0:
+                print "verification",asset_code
+                v=Verification.objects.filter(asset_code__iexact=asset_code,status=1,company_name=company_name)[0]
+                data=v.total_credential()
+             else:
+                data="none"
+            else:
+	       data="unauthorised access"
+        else:
+            data= ": Missing Data"
+    else:
+        data="Invalid Request"
+    return render_to_response('raw.html', {
+        'data': data,
+  })
+
+@csrf_exempt
+def register(request):
+   username = request.POST['username']
+   password = request.POST['password']
+   user = authenticate(username=username, password=password)
+   if user is not None:
+       data ="authorized user"
+   else:            
+      data = "Wrong username or password"
+   if data == "Wrong username or password":
+     return render_to_response('raw.html', {
+                 'data': data,
+      })
+
+   if request.method == "POST":
+     form = CheckForm(request.POST) # A form bound to the POST data
+     if form.is_valid(): # All validation rules pass
+       asset_code= str(form.cleaned_data['asset_code'])
+       time_millis=str(form.cleaned_data['scan_time'])
+       scan_time=datetime.datetime.fromtimestamp(float(time_millis)/1e3).strftime('%Y-%m-%d %H:%M:%S')
+       credential= str(form.cleaned_data['credential'])
+       orrcredential= str(form.cleaned_data['orrcredential'])
+       d1= form.cleaned_data['d1']
+       d2= form.cleaned_data['d2']
+       d3= form.cleaned_data['d3']
+       h1= form.cleaned_data['h1']
+       h2= form.cleaned_data['h2']
+       h3= form.cleaned_data['h3']
+       angle = form.cleaned_data['angle']
+       status= str(form.cleaned_data['status'])
+       operator= str(form.cleaned_data['operator'])
+       geoLoc= str(form.cleaned_data['location'])
+       scan_auth= str(form.cleaned_data['scan_auth'])
+       productDetails= str(request.POST['productDetails'])
+       bit_mask =str(form.cleaned_data['bit_mask'])
+       company_name=str(form.cleaned_data['company_name'])
+       color_profile =str(form.cleaned_data['color_profile'])
+       img_link="/media/documents/signature-not-found-4.png"
+       email_id = str(form.cleaned_data['email_id'])
+       #parsing bit_mask
+       bm=[]
+       try:
+        bm=bit_mask.split('|')
+        #print bm
+       except:
+        print "bit mask parsing error"
+       #parsing address from geo-codes.
+       location="not found"
+       print geoLoc
+       try:
+          print "try reverse geo-coding"
+          from pygeocoder import Geocoder
+          g1,g2=geoLoc.split('|')
+          result= Geocoder.reverse_geocode(float(g1), float(g2))
+          location=str(result[0])
+          print result
+       except:
+          print "failed reverse geo-coding"
+          location="not found!"
+
+       dep=Deployment.objects.filter(user=user)
+       dep_path=dep[0].dep_path
+       from django.db.models.loading import get_model
+       Verification = get_model(dep_path, 'Verification')
+       if Verification.objects.filter(asset_code__iexact=asset_code,status=1).count()>0:
+	reg_obj=Verification.objects.filter(asset_code__iexact=asset_code,status=1)[0]
+	productDetails=str(reg_obj.product_details)
+       #print productDetails
+
+       status_code=''
+       if status=='Registered':
+         status_code=1
+       if status=='Verified':
+         status_code=2
+         #identify_noise(Verification,asset_code,scan_time)
+       if status=='Tampered':
+         status_code=3
+         #status_code=tamp_state(Verification,asset_code,d1,d2,d3,h1,h2,h3)
+         #alert_tm(asset_code,status)
+       if status=='Tampered with line cut':
+         status_code=4
+         #alert_tm(asset_code,status)
+       if status=='Discrepant Label':
+         status_code=5
+       if status=='Void':
+         status_code=6
+       if status=='Barcode Error':
+         status_code=7
+       if status=='Label Error':
+         status_code=8
+       if status=='Height Error':
+         status_code=9
+       dep=Deployment.objects.filter(user=user)
+       dep_path=dep[0].dep_path
+       from django.utils.importlib import import_module
+       #print dep_path
+       save_data = import_module(dep_path+'.save_data')
+       if len(bm)>6 and bm[5]=='true':
+        img_link='/media/documents/'+asset_code+"_"+operator+"_"+time_millis+".jpg"
+       #print img_link
+       save_data.saveData(asset_code,scan_time,time_millis,credential,int(orrcredential), d1,d2,d3,h1,h2,h3,angle,status,status_code,geoLoc,location,operator,username,password,scan_auth,productDetails,bit_mask,color_profile,img_link,email_id,company_name)
+       data="Success"
+     else:
+         data= ": Missing Data"
+   else:
+     data="Invalid Request"
+
+   return render_to_response('raw.html', {
+         'data': data,
+   })
+
+def monitoring(request):
+    return render_to_response('monitoring.html',context_instance=RequestContext(request))
+
+def get_ip(request):
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    if xff:
+        return xff.split(',')[0]
+    return request.META.get('REMOTE_ADDR')
+
+def get_port(request):
+    if 'SERVER_PORT' in request.META:
+        return request.META['SERVER_PORT']
+    else:
+        return None
+
+def dashboard(request):
+    dep = Deployment.objects.filter(user=request.user)
+    dep_path = dep[0].dep_path
+    from django.db.models.loading import get_model,get_app,get_models
+    Verification = get_model(dep_path, 'Verification')
+    ActivityLog = get_model(dep_path, 'ActivityLog')
+    print dep_path,ActivityLog
+    from core.models import Logger
+    activity_data=ActivityLog.objects.all().order_by("-activity_time")[:10] 
+    last_login = Logger.objects.all().order_by("-login_time")[0]
+    app = get_app(dep_path)
+    print dep_path
+    #model_dict={}
+    #for model in get_models(app):
+        #print dep_path,(model.__name__).lower(),'/admin/%s/%s/'%(dep_path,(model.__name__).lower())
+        #model_dict[model._meta.verbose_name_plural]='/admin/%s/%s/'%(dep_path,(model.__name__).lower())
+    rRows = Verification.objects.filter(status=1).count()
+    vRows = Verification.objects.filter(status=2).count()
+    tRows = Verification.objects.filter(status=3).count()
+    dRows = Verification.objects.filter(status=5).count()
+    eRows = Verification.objects.filter(status=8).count()
+    aRows = Verification.objects.filter(status=10).count()
+
+    pie_values=[['Verified', vRows], ['Tampered', tRows],['Discrepant Label', dRows],
+                       ['Label Error', eRows],['Released', aRows], ['Registered', rRows]]
+    return render_to_response('admin/dashboard.html',{'pie_values': pie_values,"dep_path":dep_path.upper(),
+                            "last_login":last_login,"activity_data":activity_data},context_instance=RequestContext(request))
+
+@csrf_exempt
+def upload_image(request):
+    print "image file"
+    if request.method == 'POST':
+       print "posted"
+       username=request.POST['username']
+       password=request.POST['password']
+       myfile = request.FILES['myfile']
+       filename = myfile.name
+       print filename,username,password
+       user = authenticate(username=username, password=password)
+       if user is not None:
+        fd = open(PROJECT_PATH+'smartDNA/media/documents/'+filename, 'wb+',00777)
+        print "open file object"
+        for chunk in myfile.chunks():
+            fd.write(chunk)
+        fd.close()
+        print filename,"Uploaded Successfully"
+        return HttpResponse("OK")
+       else:
+	return HttpResponse("Invalid User")
+    else:
+       return HttpResponse("Not Ok")
+
+@csrf_exempt
+def upload_postmortem_image(request):
+    if request.method=='POST':
+        username=request.POST['username']
+        password=request.POST['password']
+        myfile = request.FILES['myfile']
+        filename =myfile.name
+        print filename,username,password
+        user = authenticate(username=username, password=password)
+        if user is not None:
+         asset_code,username,time_millis,ctwext=filename.split('|')
+         case_type,ext=ctwext.split('.')
+	 scan_time=datetime.datetime.fromtimestamp(float(time_millis)/1e3).strftime('%Y-%m-%d %H:%M:%S')
+         fd = open(PROJECT_PATH+'smartDNA/media/postmortem_image/' + filename,'wb+',00777)
+         imagefile='/media/postmortem_image/'+filename
+         print imagefile
+	 dep=Deployment.objects.filter(user=user)
+    	 dep_path=dep[0].dep_path
+         from django.db.models.loading import get_model
+    	 PostmortemImage = get_model(dep_path, 'PostmortemImage')
+         imdoc=PostmortemImage(asset_code=asset_code,scan_time=scan_time,case_type=case_type,imagefile=imagefile)
+         imdoc.save()
+         for chunk in myfile.chunks():
+             fd.write(chunk)
+         fd.close()
+         print "upload success!"
+         return HttpResponse("OK")
+        else:
+         return HttpResponse("Invalid User")
+    else:
+        return HttpResponse("Not Ok")
+
+@csrf_exempt
+def anomalyReg(request):
+    print "Trying to post anomaly"
+    if request.method == "POST":
+        print "Anomaly posted"
+        form = AnomalyForm(request.POST) # A form bound to the POST data
+        if form.is_valid():# All validation rules pass
+            print "Anomaly valid post"
+            username= form.cleaned_data['username']
+            password= form.cleaned_data['password']
+            asset_code= form.cleaned_data['asset_code']
+	    scan_time=str(datetime.datetime.now())
+            operator= form.cleaned_data['operator']
+	    location= form.cleaned_data['location']
+            print asset_code,operator
+            ostatus=""
+            user = authenticate(username=username, password=password)
+            if user is not None:
+       	        dep=Deployment.objects.filter(user=user)
+    		dep_path=dep[0].dep_path
+             	from django.db.models.loading import get_model
+    		Anomaly = get_model(dep_path, 'Anomaly')
+       	        anomaly=Anomaly(asset_code=asset_code,scan_time=scan_time,operator=operator,location=location)
+		anomaly.save()
+                data="Success"
+            else:
+                data="Wrong username or password"
+        else:
+            data= ": Missing Data"
+    else:
+        data="Invalid Request"
+    return render_to_response('raw.html', {'data': data,})
+
+def support(request):
+    with open(PROJECT_PATH+'smartDNA/media/patrol-monitoring-application-guide.pdf', 'r') as pdf:
+        response = HttpResponse(pdf.read(), mimetype='application/pdf')
+        response['Content-Disposition'] = 'inline;filename=patrol-monitoring-application-guide.pdf'
+        return response
+    pdf.closed
+
+def analytics(request):
+   data="Feature on Demand"
+   return render_to_response('admin/analytics.html', {'data': data,})
+
+def audit_monitoring(request):
+    username=request.user
+    dep=Deployment.objects.filter(user=username)
+    dep_path=dep[0].dep_path
+    url_path="/admin/"+dep_path+"/verification/"
+    return HttpResponseRedirect(url_path)
+
+def cmonitoring(request):
+    username=request.user
+    dep=Deployment.objects.filter(user=username)
+    dep_path=dep[0].dep_path
+    from django.db.models.loading import get_model
+    Verification = get_model(dep_path, 'Verification')
+    if request.method == 'POST':
+        form = DateRangeForm(request.POST)
+        if form.is_valid():
+         d1 = form.cleaned_data['day1']
+         d2 = (form.cleaned_data['day2']+datetime.timedelta(days=1))
+         #store = form.cleaned_data['Store']
+         if d1<d2:
+          nosort="Remove Filter"
+          vdata=Verification.objects.filter(scan_time__range=(d1,d2)).order_by('-scan_time')
+          c = str(vdata.count())
+          paginator = Paginator(vdata,20 )
+          page = request.GET.get('page')
+          try:
+            data = paginator.page(page)
+          except PageNotAnInteger:
+            data = paginator.page(1)
+          except EmptyPage:
+            data = paginator.page(paginator.num_pages)
+          total_records ="Total records: "+c
+          return render_to_response('admin/cmonitoring.html', {'data': data,'form':form,'pdata':vdata,'nosort':nosort,"total_records":total_records},context_instance=RequestContext(request))
+         else:
+	     vdata=Verification.objects.all().order_by('-scan_time')
+	     c = str(vdata.count())
+	     paginator = Paginator(vdata,20 )
+	     page = request.GET.get('page')
+	     try:
+	       data = paginator.page(page)
+	     except PageNotAnInteger:
+	       data = paginator.page(1)
+	     except EmptyPage:
+	       data = paginator.page(paginator.num_pages)
+	     total_records ="Total records: "+c
+             nosort="Remove Filter"
+             wrange="Incorrect date range-no filter applied"
+             return render_to_response('admin/cmonitoring.html', {'data': data,'pdata':vdata,'form':form,'wrange':wrange,'nosort':nosort,"total_records":total_records},context_instance=RequestContext(request))
+        else:
+	    vdata=Verification.objects.all().order_by('-scan_time')
+            c = str(vdata.count())
+            paginator = Paginator(vdata,20 )
+            page = request.GET.get('page')
+            try:
+              data = paginator.page(page)
+            except PageNotAnInteger:
+              data = paginator.page(1)
+            except EmptyPage:
+              data = paginator.page(paginator.num_pages)
+            total_records ="Total records: "+c
+	    nosort="Remove Filter"
+            error_message="Invalid date-no filter applied"
+            form = DateRangeForm()
+            return render_to_response('admin/cmonitoring.html', {'data': data,'pdata':vdata,'error_message': error_message,'form':form,'nosort':nosort,"total_records":total_records},context_instance=RequestContext(request))
+    else:
+        vdata = Verification.objects.all().order_by('-scan_time')
+	c = str(vdata.count())
+	total_records ="Total records: "+c
+        paginator = Paginator(vdata, 20)
+        page = request.GET.get('page')
+        form = DateRangeForm()
+        try:
+            data = paginator.page(page)
+        except PageNotAnInteger:
+            data = paginator.page(1)
+        except EmptyPage:
+            data = paginator.page(paginator.num_pages)
+        return render_to_response('admin/cmonitoring.html', {
+            'data': data,'pdata':vdata,'form':form,"total_records":total_records
+            },
+            context_instance=RequestContext(request))
+
+
+def scanmonitoring(request):
+    username=request.user
+    dep=Deployment.objects.filter(user=username)
+    dep_path=dep[0].dep_path
+    print dep_path
+    from django.db.models.loading import get_model
+    Verification = get_model(dep_path, 'Verification')
+    pdata = Verification.objects.all()
+    if request.method == 'POST':
+        form = DateRangeForm(request.POST)
+        if form.is_valid():
+         d1 = form.cleaned_data['day1']
+         d2 = (form.cleaned_data['day2']+datetime.timedelta(days=1))
+         #store = form.cleaned_data['Store']
+         if d1<d2:
+          nosort="Remove Filter"
+          pdata=Verification.objects.filter(scan_time__range=(d1,d2)).order_by('-scan_time')
+          c = str(pdata.count())
+          paginator = Paginator(pdata,50)
+          page = request.GET.get('page')
+          try:
+            data = paginator.page(page)
+          except PageNotAnInteger:
+            data = paginator.page(1)
+          except EmptyPage:
+            data = paginator.page(paginator.num_pages)
+          total_records ="Total Records: "+c
+          return render_to_response('admin/scanmonitoring.html', {'data': data,'form':form,'pdata':pdata,'nosort':nosort,"total_records":total_records},context_instance=RequestContext(request))
+         else:
+             nosort="Remove Filter"
+             wrange="Incorrect date range "
+             return render_to_response('admin/scanmonitoring.html', {'pdata':pdata,'form':form,'wrange':wrange,'nosort':nosort,},context_instance=RequestContext(request))
+        else:
+	    nosort="Remove Filter"
+            error_message="Invalid date entered"
+            form = DateRangeForm()
+            return render_to_response('admin/scanmonitoring.html', {'pdata':pdata,'error_message': error_message,'form':form,'nosort':nosort,},context_instance=RequestContext(request))
+    else:
+        pdata = Verification.objects.all().order_by('-scan_time')
+	c = str(pdata.count())
+	total_records ="Total Records: "+c
+        paginator = Paginator(pdata, 50)
+        page = request.GET.get('page')
+        form = DateRangeForm()
+        try:
+            data = paginator.page(page)
+        except PageNotAnInteger:
+            data = paginator.page(1)
+        except EmptyPage:
+            data = paginator.page(paginator.num_pages)
+        return render_to_response('admin/scanmonitoring.html', {
+            'data': data,'pdata':pdata,'form':form,"total_records":total_records
+            },
+            context_instance=RequestContext(request))
+
+def asset_status(request,code):
+    username=request.user
+    dep=Deployment.objects.filter(user=username)
+    dep_path=dep[0].dep_path
+    print dep_path
+    from django.db.models.loading import get_model
+    Verification = get_model(dep_path, 'Verification')
+    data=Verification.objects.filter(asset_code__iexact=code)
+    asset_code=code
+    total_records=str(data.count())#+" records"
+    return render_to_response('admin/asset_status.html', {'data': data,'asset_code':asset_code,'total_records':total_records},context_instance=RequestContext(request))
+
+def orr_status(request,asset_code):
+	 username=request.user
+    	 dep=Deployment.objects.filter(user=user)
+     	 dep_path=dep[0].dep_path
+    	 print dep_path
+     	 from django.db.models.loading import get_model
+    	 OrrVerification = get_model(dep_path, 'OrrVerification')
+         pdata=OrrVerification.objects.filter(asset_code=asset_code,image_type="Audit").order_by('-id')
+	 vdata=OrrVerification.objects.filter(asset_code=asset_code,image_type="Audit").order_by('-id')
+	 c = str(vdata.count())
+	 nosort="Remove Filter"
+	 error_message=""
+         if vdata.count()<1:
+	  error_message="NO Reocrds Found!"
+    	 total_records ="Total Records: "+c
+    	 paginator = Paginator(vdata, 24)
+    	 page = request.GET.get('page')
+    	 try:
+       	  data = paginator.page(page)
+    	 except PageNotAnInteger:
+       	  data = paginator.page(1)
+    	 except EmptyPage:
+          data = paginator.page(paginator.num_pages)
+    	 return render_to_response('admin/orr_status.html', {'data': data,'pdata':pdata,'error_message': error_message,'nosort':nosort,'total_records':total_records},context_instance=RequestContext(request))
+
+def batch_report(request):
+    username=request.user
+    dep=Deployment.objects.filter(user=username)
+    dep_path=dep[0].dep_path
+    from django.db.models.loading import get_model
+    Verification = get_model(dep_path, 'Verification')   
+    if request.method == 'POST':
+     message=""
+     form = BatchReportForm(request.POST)
+     if form.is_valid():
+      try:
+       start=int(form.cleaned_data['first_batch_id'])
+       end=int(form.cleaned_data['last_batch_id'])
+       import xlwt
+       book = xlwt.Workbook()
+       sheet1 = book.add_sheet('sheet1')
+       i=0
+       for ids in range(start,end+1):
+        if Verification.objects.filter(asset_code=ids,status=1).exists():
+         print "found regisered"
+        else:
+         sheet1.write(i,0,ids)
+         i=i+1
+       if i>0:
+        response = HttpResponse(mimetype='application/vnd.ms-excel')
+        response['Content-Disposition'] = 'attachment; filename=the-file.xls'
+        book.save(response)
+        return response
+       else:
+        message="No Data"
+        form = BatchReportForm()
+        return render_to_response('admin/batch_report.html',{'form':form,'message':message,},context_instance=RequestContext(request))
+      except ValueError:
+       message="Invalid Entry"
+       form = BatchReportForm()
+       return render_to_response('admin/batch_report.html',{'form':form,'message':message,},context_instance=RequestContext(request))
+     else:
+      message="Invalid Entry"
+      form = BatchReportForm()
+      return render_to_response('admin/batch_report.html',{'form':form,'message':message,},context_instance=RequestContext(request))
+    else:
+     form = BatchReportForm()
+     return render_to_response('admin/batch_report.html',{'form':form,},context_instance=RequestContext(request))
+
+def postmortem_status(request,asset_code):
+    username=request.user
+    dep=Deployment.objects.filter(user=username)
+    dep_path=dep[0].dep_path
+    print dep_path
+    from django.db.models.loading import get_model
+    PostmortemImage = get_model(dep_path, 'PostmortemImage')
+    vdata = PostmortemImage.objects.filter(asset_code__iexact=asset_code).order_by('-scan_time')
+    c = str(vdata.count())
+    total_records ="Total records: "+c
+    paginator = Paginator(vdata, 20)
+    page = request.GET.get('page')
+    try:
+     data = paginator.page(page)
+    except PageNotAnInteger:
+     data = paginator.page(1)
+    except EmptyPage:
+     data = paginator.page(paginator.num_pages)
+    return render_to_response('admin/postmortem_status.html', {
+            'data': data,'pdata':vdata,"total_records":total_records
+            },context_instance=RequestContext(request))
+
+def download_mediabook(request):
+    from dep1.models import Verification,ActivityLog
+    from core.utils import get_ip,get_address
+    if request.method == 'POST':
+       form = DateRangeForm(request.POST)
+       if form.is_valid():
+        username=str(request.user)
+        d1 = form.cleaned_data['day1']
+        d2 = form.cleaned_data['day2']
+        if d1<=d2:
+          queryset=Verification.objects.filter(scan_time__range=(d1, d2+datetime.timedelta(days=1))).order_by('-scan_time')
+          if queryset.count()>0:
+	   c=get_address(request)
+           response=export_media2(queryset,username)
+	   #al=ActivityLog(staff=str(request.user),activity_time=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S'),ip_address=get_ip(request),city=c['city'],postal_code=c['postal_code'],remark="media records exported!")
+	   #al.save()
+           return response
+          else:
+           message="No data found with in the range!"
+           return render_to_response('admin/export_media.html', {'form':form,'message':message},context_instance=RequestContext(request))
+    else:
+     form = DateRangeForm()
+     return render_to_response('admin/export_media.html', {'form':form,},context_instance=RequestContext(request))
+
+from core.utils import queryset_to_workbook
+def download_workbook(request):
+     from dep1.models import Verification,ActivityLog
+     from core.utils import get_ip,get_address
+     if request.method == 'POST':
+         form = DateRangeForm(request.POST)
+         if form.is_valid():
+          d1 = form.cleaned_data['day1']
+          d2 = form.cleaned_data['day2']
+          if d1<=d2:
+           queryset=Verification.objects.filter(scan_time__range=(d1, d2+datetime.timedelta(days=1))).order_by('-scan_time')
+           columns = (
+                   'asset_code',
+                   'scan_time',
+                   'status',
+                   'location',
+                   'auth_code',
+                   'product_details',
+                   'operator',
+                   'bit_mask',
+		            'image')
+           #print "counter:",queryset.count()
+           if queryset.count()>0:
+	    c=get_address(request)
+            #message="Total "+queryset.count()+" records exported"
+            workbook = queryset_to_workbook(queryset, columns)
+            response = HttpResponse(mimetype='application/vnd.ms-excel')
+            response['Content-Disposition'] = 'attachment; filename="export_data.xls"'
+            workbook.save(response)
+	    #al=ActivityLog(staff=str(request.user),activity_time=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S'),ip_address=get_ip(request),city=c['city'],postal_code=c['postal_code'],remark="data records exported!")
+	    #al.save()
+            return response
+           else:
+            message="No data found with in the range!"
+            return render_to_response('admin/export_data.html', {'form':form,'message':message},context_instance=RequestContext(request))
+     else:
+         form = DateRangeForm()
+         return render_to_response('admin/export_data.html', {'form':form,},context_instance=RequestContext(request))
+
+def settings(request):
+    # Reading JSON data
+    with open(PROJECT_PATH+'smartDNA/media/settings.json', 'r') as f:
+     json_data = json.load(f)
+    with open(PROJECT_PATH+'smartDNA/media/expiry_time.json', 'r') as f:
+     json_data2 = json.load(f)
+    email_host=json_data['email_host']
+    email_port=json_data['email_port']
+    email_username=json_data['email_username']
+    email_password=json_data['email_password']
+    dep_name=json_data['dep_name']
+    dep_type=json_data['dep_type']
+    return render_to_response('admin/settings.html',{'email_host': email_host,'email_port':email_port,'email_username':email_username, 'email_password':email_password,'dep_name':dep_name,'dep_type':dep_type,"expiry_time":json_data2['days']},context_instance=RequestContext(request))
+
+def settings_configure(request):  
+    if request.method == 'POST':
+     message=""
+     form = SettingsForm(request.POST)
+     print "form object"
+     if form.is_valid():
+      dep_name=str(form.cleaned_data['dep_name'])
+      dep_type=str(form.cleaned_data['dep_type'])
+      email_host=str(form.cleaned_data['email_host'])
+      email_port=str(form.cleaned_data['email_port'])
+      email_username=str(form.cleaned_data['email_username'])
+      email_password=str(form.cleaned_data['email_password'])
+      data = {}
+      data['email_host'] = email_host
+      data['email_port']=email_port
+      data['email_username'] = email_username
+      data['email_password'] = email_password
+      data['dep_name'] = dep_name
+      data['dep_type'] = dep_type
+      print dep_name,dep_type,email_host,email_port,email_username,email_password
+      print data
+      # Writing JSON data
+      from core.get_json import getJSON
+      getJSON(email_host,email_port,email_username,email_password,dep_name,dep_type)
+      return HttpResponseRedirect("/settings/")
+     else:
+      message="Invalid Entry"
+      form = SettingsForm()
+      return render_to_response('admin/settings_configure.html',{'form':form,'message':message,},context_instance=RequestContext(request))
+    else:
+     form = SettingsForm()
+     return render_to_response('admin/settings_configure.html',{'form':form,},context_instance=RequestContext(request))
+

@@ -1,0 +1,170 @@
+import datetime
+from django.conf import settings
+import os
+from django.db import models
+
+STATUS_CHOICES=(
+    (1,'Registered'),
+    (2,'Verified'),
+    (3,'Tampered'),
+    (4,'Tampered with line cut'),
+    (5,'Invalid'),
+    (6,'Void'),
+    (7,'Barcode Error'),
+    (8,'Label Error'),
+    (9,'Height Error'),
+    (10,'Released'),
+    (11,'Audited'),
+    (12, 'Damaged or missing'),
+    (13,'Verified-x'),
+    (14,'Tampered-2'),
+    (15,'Tampered-3'), 
+    )
+
+FILE_PATH="/home/ubuntu/linksmart/smartDNA"
+
+class Verification(models.Model):
+    asset_code = models.CharField(verbose_name="Asset-ID",max_length=32, default="")
+    scan_time=models.DateTimeField(verbose_name="Scan Time",default=datetime.datetime.now)#,auto_now_add=True)
+    credential = models.CharField(verbose_name="Credential",max_length=16, default="")
+    d1 = models.CharField(verbose_name="D1",max_length=8, default="0.0")
+    d2 = models.CharField(verbose_name="D2",max_length=8, default="0.0")
+    d3 = models.CharField(verbose_name="D3",max_length=8, default="0.0")
+    h1 = models.CharField(verbose_name="H1",max_length=8, default="0.0")
+    h2 = models.CharField(verbose_name="H2",max_length=8, default="0.0")
+    h3 = models.CharField(verbose_name="H3",max_length=8, default="0.0")
+    angle = models.CharField(verbose_name="Orientation",max_length=8, default="")
+    status = models.IntegerField(verbose_name="Status",choices=STATUS_CHOICES,default=1)
+    orr_credential=models.IntegerField(verbose_name="Forensic Credential",default=1000)
+    operator = models.CharField(verbose_name="Operator",max_length=16, default="")
+    geo_location = models.CharField(verbose_name="Geo-Location",max_length=64, default="")
+    location = models.CharField(verbose_name="Location",max_length=128, default="")
+    auth_code = models.CharField(verbose_name="Mobile Number",max_length=20, default="none")
+    image =  models.FileField(upload_to='documents/')
+    created = models.DateTimeField(verbose_name="Created on",blank=True,auto_now_add=True)
+    modified = models.DateTimeField(verbose_name="Modified on",blank=True,auto_now=True)
+    product_details= models.CharField(verbose_name="Dispatch ID",max_length=64, null=True,blank=True, default="Not Found")
+    bit_mask = models.CharField(verbose_name="Bit Mask",max_length=64, null=True,blank=True, default="")
+    color_profile = models.CharField(verbose_name="Color Profile",max_length=64, null=True,blank=True, default="")
+    email_id = models.CharField(verbose_name="Recipient Email-ID",max_length=64, null=True,blank=True, default="")
+    company_name = models.CharField(verbose_name="Company",max_length=64, null=True,blank=True, default="")
+
+    class Meta:
+	verbose_name_plural = 'Scan Monitoring'
+
+    def delete(self,*args,**kwargs):
+	if self.pk:
+	 image=self.image
+         print image
+	 if os.path.isfile(FILE_PATH+image.name) and image!="/media/documents/signature-not-found-4.png":
+	  os.remove(FILE_PATH+image.name)
+        super(Verification, self).delete()
+
+    def release(self,*args,**kwargs):
+        print "releasing the assets!"
+        asset_code=self.asset_code
+        print asset_code
+        v=Verification.objects.filter(asset_code__exact=asset_code,status=1)
+        for x in v:
+            x.status=10
+            x.save()
+    
+    def __unicode_self_(self):
+        return "%s" %(self.asset_code)
+
+    def total_credential(self):
+        return "%s|%s|%s|%s|%s|%s|%s|%s|%s" % (self.d1,self.d2,self.d3,self.angle,self.h1,self.h2,self.h3,self.product_details,self.company_name,self.color_profile)
+
+    def colored_status(self):
+        color=None
+        if self.status==1:
+            color="info"
+        if  self.status==2 or self.status==13:
+            color="success"
+        if self.status==3 or self.status==4 or self.status==14 or self.status==15:
+            color="important"
+        if color is None:
+            color="inverse"
+        return '<span class="badge badge-%s">%s</span>' % (color, STATUS_CHOICES[self.status-1][1])
+    colored_status.allow_tags = True
+    colored_status.short_description = 'Status'
+
+    def item_info(self):
+	item_info=self.product_details
+	try:
+	 item_info=str(item_info).split('#')[0]
+	except:
+	 item_info=self.product_details
+	return item_info
+
+    def location_string(self):
+	address=self.location
+	try:
+	 address_result=str(address).split(", ")
+	 address_size=len(address_result)
+	 if address_size>1:
+	  address=str(address_result[0]+","+address_result[(address_size-2)]+","+address_result[(address_size-1)])
+	 else:
+	  address=self.location
+	except:
+	 address=self.location
+	return address
+
+    def forensic_status(self):
+	orr_status="non-forensic mode scan"
+        if self.orr_credential==0:
+         orr_status="Duplicate Label"
+        elif self.orr_credential==1:
+         orr_status="Original Label"
+        elif self.orr_credential==2:
+         orr_status="Scanning in dark"
+        elif self.orr_credential==3:
+         orr_status="Keep handset tilted down on label side and up on barcode side"
+        return orr_status
+    def admin_thumbnail(self):
+        return u'<img src="%s" />' % (self.image.url)
+    admin_thumbnail.short_description = 'Thumbnail'
+    admin_thumbnail.allow_tags = True
+
+class PostmortemImage(models.Model):
+      asset_code=models.CharField(verbose_name="Asset Code",max_length=16,default="")
+      scan_time=models.DateTimeField(verbose_name="Time of Scan",default=datetime.datetime.now)
+      case_type=models.CharField(verbose_name="Case",max_length=32,default="")
+      result = models.CharField(verbose_name="Result",max_length=64, choices=[('Not Audited', 'Not Audited'), ('Audited-OK', 'Audited-OK'),('Audited-Discrepant','Audited-Discrepant')],default="Not Audited")
+      imagefile = models.FileField(upload_to='postmortem_image/')
+      class Meta:
+        verbose_name_plural="Postmortem Images"
+
+      def delete(self,*args,**kwargs):
+	image=self.imagefile
+	if os.path.isfile(FILE_PATH+image.name):
+          os.remove(FILE_PATH+image.name)
+
+class Anomaly(models.Model):
+    asset_code = models.CharField(verbose_name="Asset Code",max_length=16, default="")
+    scan_time=models.DateTimeField(verbose_name="Time of smartDNA scan",default=datetime.datetime.now)
+    operator = models.CharField(verbose_name="Operator",max_length=16, default="NF")
+    location = models.CharField(verbose_name="Location",max_length=64, default="NF")
+
+    class Meta:
+	verbose_name = 'Anomaly Record'
+   
+
+class Alert(models.Model):
+    tracking_code=models.CharField(verbose_name="Tracking Code",max_length=16,default="")
+    alert_message=models.CharField(verbose_name="Alert Message",max_length=64,default="")
+    alert_time=models.DateTimeField(verbose_name="Scan Time",default=datetime.datetime.now)
+    ip_address=models.CharField(verbose_name="IP Address",max_length=32)
+
+    class Meta:
+	verbose_name_plural = 'Scan Alert'
+
+class AlertSubscriber(models.Model):
+    subscriber=models.CharField(verbose_name="Subscriber",max_length=16,default="")
+    phone=models.CharField(verbose_name="Mobile Number",max_length=16,default="+918123988452")
+    email=models.CharField(verbose_name="Email ID",max_length=64,default="")
+    alert_type=models.CharField(verbose_name="Alert Type",max_length=16,default="")
+
+    class Meta:
+	verbose_name_plural="Alert Subscribers"
+

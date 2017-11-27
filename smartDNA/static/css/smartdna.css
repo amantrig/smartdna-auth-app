@@ -1,0 +1,62 @@
+#id_day1,#id_day2,#id_Store,#nosort,#form_message,#apply_filter{
+	width:128px;
+	height:28px;
+	text-align:center;
+}
+
+#id_status{
+    width:128px;
+    height:28px;
+}
+#id_scan_count{
+    width:60px;
+    height:28px;
+    text-align:center;
+}
+#label_scan_count,#label_from,#label_to,#label_store,#id_scan_count,#id_day1,#id_day2,#id_Store,#nosort,#form_message,#apply_filter{
+        display: inline;
+        margin: 0;
+        padding: 0;
+        float:left;
+}
+#label_scan_count{
+    padding:5px 4px 0px 1px; 
+    text-align:center;
+    width:84px;
+    height:24px;
+}
+#label_from,#label_to,#label_store{
+	padding:5px 4px 0px 1px; 
+	text-align:center;
+	width:42px;
+    height:24px;
+}
+
+#pie_chart,#columnchart,#activity_log{
+padding-right:20px;
+}
+/**title{
+*  white-space: normal;
+* overflow: hidden;
+*  text-overflow: ellipsis;
+}**/
+.badge-non-forensic{background-color:#ffcccc;color:#000000;width:124px;
+white-space: pre-wrap; /* css-3 */    
+    white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+    white-space: -pre-wrap; /* Opera 4-6 */    
+    white-space: -o-pre-wrap; /* Opera 7 */    
+    word-wrap: break-word; /* Internet Explorer 5.5+ */}
+.badge-forensic{background-color:#ccffcc;color:#000000;width:124px;
+white-space: pre-wrap; /* css-3 */    
+    white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+    white-space: -pre-wrap; /* Opera 4-6 */    
+    white-space: -o-pre-wrap; /* Opera 7 */    
+    word-wrap: break-word; /* Internet Explorer 5.5+ */}
+.badge-warning{background-color:#cc5200;}
+/*#non-forensic{vertical-align:middle;}*/
+/*#forensic{vertical-align:middle;}*/
+/*td{vertical-align:middle;}*/
+img.thumbnail{width:100%;}
+
+#password{visibility:hidden;background:black;}
+

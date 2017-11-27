@@ -1,0 +1,11 @@
+{% extends "suit/error_base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans 'Page unavailable' %}{% endblock %}
+
+{% block error %}{% trans 'error'|capfirst %} 500{% endblock %}
+
+{% block content %}
+ <p>Sorry, but the requested page is unavailable due to a server hiccup.</p>
+ <p> It seems we are under maintenance, please try again later.</p>
+{% endblock %}

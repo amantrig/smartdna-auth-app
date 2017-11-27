@@ -1,0 +1,192 @@
+{% extends "admin/base.html" %}
+{% load admin_static %}
+{% load url from future %}
+{% load i18n %}
+{% load suit_tags %}
+{% load smartdna_tags %}
+<head>
+<title>{% block title %}{{'Dashboard'}} | {{ 'ADMIN_NAME'|site_title}}{% endblock %}</title>
+{% block extrahead %}
+{% endblock %}
+{# Additional CSS includes #}
+{% block extrastyle %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/smartdna.css' %}" media="all">
+{% endblock %}
+{% block extrajs %}
+<script type="text/javascript" src="{% static 'js/jquery-1.7.2.min.js' %}"></script>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript" src="{% static 'js/smartdna_charts.js' %}"></script>
+{% endblock %}
+</head>
+
+<body>
+<div id="content-main">
+{% block content %}
+    {% if app_list %}
+      {% for app in app_list %}
+        <div class="module">
+        <table class="table-overview applist" summary="{% blocktrans with name=app.name %}Models available in the {{ name }} application.{% endblocktrans %}">
+            <caption><a href="{{ app.app_url }}" class="section">{% trans app.name %}</a></caption>
+            {% for model in app.models %}
+              <tr>
+                <th scope="row">{{ model.name }}</th>
+                {% if model.admin_url %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink icon">{% trans 'Change' %}</a>
+                  </td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+                {% if model.add_url %}
+                  <td><a href="{{ model.add_url }}" class="addlink icon"><i
+                          class="icon-plus-sign icon-alpha75"></i>{% trans 'Add' %}
+                  </a></td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+<div style="padding:0;" class="container-fluid">
+<div class="table-responsive">
+    <table>
+    <thead>
+    <tr>
+       <th>Audit Overview- Total Scans</th>
+        <!--<th>Per Month Scan</th>-->
+        <th>Recent Activity Log</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+<!--   <td>
+        <div id="app_list" style="overflow-y: scroll;height: 240px;">
+            <table class="table-overview applist">
+             <thead>
+                 <tr>
+                <th style="text-align:left;" >{{dep_path}}</th>
+                </tr>
+             </thead>
+                <tbody>
+                {% for app, app_link in model_dict.items %}
+                <tr>
+                    <td><a href="{{ app_link }}">{{app}}</a> </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </td>
+ -->
+        <td id="pie_chart"><div id="pie_out" style="width: 400px; height: 300px;"></div></td>
+        <!--<td id="columnchart" ><div id="columnchart_material" style="width: 320px; height: 240px;"></div></td>-->
+        <td id="activity_log"><div id="recent_activity" style="width: 400px; height: 300px; overflow-y:scroll;">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Activity</th>
+                    <th>Time</th>
+                </tr>
+                </thead>
+                <tbody>
+                 <tr>
+                     <td>{{last_login.user}}</td>
+                     <td>Last Login</td>
+                    <td>{{last_login.login_time}}</td>
+                </tr>
+                {% for record in activity_data %}
+                <tr>
+                    <td>{{record.staff}}</td>
+                    <td>{{record.remark}}</td>
+                    <td>{{record.activity_time}}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div></td>
+    </tr>
+    </tbody>
+    </table>
+<!--    <table>
+        <thead>
+        <tr>
+            <th>Recent Activity Log</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+        <td><div id="recent_activity" style="width: 440px; height: 240px;">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Activity</th>
+                    <th>Time</th>
+                </tr>
+                </thead>
+                <tbody>
+                 <tr>
+                     <td>{{last_login.user}}</td>
+                     <td>Last Login</td>
+                    <td>{{last_login.login_time}}</td>
+                </tr>
+                {% for record in activity_data %}
+                <tr>
+                    <td>{{record.operator}}</td>
+                    <td>{{record.remark}}</td>
+                    <td>{{record.activity_time}}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div></td>
+    </tr>
+    </tbody>
+    </table>
+-->
+</div>
+{% endblock %}
+{% block footer_links %}
+ <p>{% last_login_details %}</p>
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+{% block header_content %}
+  {{ block.super }}
+<div class="header-content">
+<!-- First icon column -->
+<div class="header-column icon">
+<i class="icon-ok-circle"></i><br>
+            <!--<i class="icon-cog"></i>-->
+        </div>
+        <div class="header-column" style="margin-right: 20px">
+            <a href="/dashboard/main/" class="grey">DASHBOARD</a><br>
+            <!--<a href="" class="grey">One more link</a>-->
+        </div>
+        {% if user.is_superuser %}
+            <!-- Second icon column -->
+            <div class="header-column icon">
+                <i class="icon-cog"></i>
+            </div>
+            <div class="header-column">
+                <a href="/settings/" class="grey">Settings</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+Footer branding name (center)
+{% block footer_branding %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+{# Footer copyright (right side)
+{% block copyright %}
+Copyright &copy; 2016-17 <a href="http://www.linksmartdna.com/" target="_blank">Linksmart Technologies</a><br>
+sAMM <span>{% app_version %}</span>
+{% endblock %}
+</body>

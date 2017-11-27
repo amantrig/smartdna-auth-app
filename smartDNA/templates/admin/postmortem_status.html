@@ -1,0 +1,136 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+{% load admin_static %}
+
+<head> 
+{% block extrahead %}
+{% endblock %}
+{# Additional CSS includes #}
+{% block extrastyle %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/smartdna_orr.css' %}" media="all">
+{% endblock %}
+{% block extrajs %}
+<script type="text/javascript" src="{% static 'js/my_project.js' %}"></script>
+{% endblock %}
+</head>
+
+<body> 
+<div id="content-main">
+{% block content %}
+    {% if app_list %}
+      {% for app in app_list %}
+        <div class="module">
+        <table class="table-overview applist" summary="{% blocktrans with name=app.name %}Models available in the {{ name }} application.{% endblocktrans %}">
+            <caption><a href="{{ app.app_url }}" class="section">{% trans app.name %}</a></caption>
+            {% for model in app.models %}
+              <tr>
+                <th scope="row">{{ model.name }}</th>
+                {% if model.admin_url %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink icon">{% trans 'Change' %}</a>
+                  </td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+
+                {% if model.add_url %}
+                  <td><a href="{{ model.add_url }}" class="addlink icon"><i
+                          class="icon-plus-sign icon-alpha75"></i>{% trans 'Add' %}
+                  </a></td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+       <div style="padding:0;" class="container-fluid">
+<h2 style="float:left;padding-top:1%;padding-right:5%;">
+smartDNA™ Postmortem Images for Audit <span style="color:red">{{total_records}}</span></h2>
+<!--        <form action="" method="POST">{% csrf_token %}
+        <ul style="list-style-type: none;text-align:left;">
+        <li><label id="label_asset">Asset Code:</label>{{ form.asset_code}}</li>
+<li id="apply_filter" style="margin-left:1%;"><input class="btn btn-high btn-info" type="submit" name="sort" value="Search "/></li>
+        <li id="nosort"><a href="/orr_monitoring/">{{nosort}}</a></li>
+	<li id="form_message" style="color:red">{{error_message}}</li></ul>
+        </form>-->
+	<form style="padding-top:1%;" action="/monitoring/">
+	<input class="btn btn-high btn-info" type="submit" value="BACK TO COLOR-CODED-MONITORING">
+	</form>
+       </div>
+<!-- END FILTER FORM -->
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                <th>Visual Authentication Data</th>
+		<th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for record in data %}
+              <tr>
+<td class="align-left">
+<img style="width:360px;height:120px;" src={{record.imagefile}} onerror="this.src='/media/documents/not-found.png'"/> </td>
+		<td class="align-left">
+		<ul style="list-style:none;">
+		<li>{{ record.colored_status|safe }}</li><br/>
+                <li><strong>Shipment ID:</strong>{{ record.asset_code }}</li>
+        	<li class="align-left"><strong>Image Type:</strong>{{record.case_type}}</li>    
+		<li><strong>Audit Status:</strong>{{record.result }}</li>
+		<li><strong>Time of Scan:</strong>{{record.scan_time }}</li>
+                </ul></td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          <!-- Pagination Links -->
+          <div>
+           {% load pagination_tags %}
+         {% autopaginate pdata  %} 
+           {% paginate %} 
+	 <span class="current">
+	 Page {{ data.number }} of {{ data.paginator.num_pages }}.
+	 </span>
+	</div>
+{% endblock %}
+{% block footer_links %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+{% block header_content %}
+  {{ block.super }}
+<div class="header-content">
+<!-- First icon column -->
+<div class="header-column icon">
+<i class="icon-home"></i><br>
+            <!--<i class="icon-cog"></i>-->
+        </div>
+        <div class="header-column" style="margin-right: 20px">
+            <a href="/" class="grey">Front-end</a><br>
+            <!--<a href="" class="grey">One more link</a>-->
+        </div>
+        <!-- Second icon column -->
+        <div class="header-column icon">
+            <i class="icon-cog"></i>
+        </div>
+        <div class="header-column">
+            <a href="/settings/" class="grey">Settings</a>
+        </div>
+    </div>
+{% endblock %}
+
+Footer branding name (center) 
+{% block footer_branding %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+
+{# Footer copyright (right side) 
+{% block copyright %}
+ Copyright &copy; 2016-17 Linksmart Technologies <br>Developed by <a href="http://www.linksmartdna.com/" target="_blank">Linksmart Technologies</a> 
+{% endblock %}
+</body>

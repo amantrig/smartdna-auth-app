@@ -1,0 +1,12 @@
+# Byte-compiled / optimized / DLL files
+*.pyc
+
+#Image files
+*.jpg
+*.png
+
+# Django stuff:
+*.log
+
+#Configuration files
+*.CNF

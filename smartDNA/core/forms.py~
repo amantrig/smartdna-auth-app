@@ -1,0 +1,148 @@
+from django.contrib.admin.forms import AdminAuthenticationForm
+from django.core.exceptions import ValidationError
+from django.core import validators
+from django import forms
+from django.contrib.admin.sites import AdminSite
+import datetime
+import os,json
+from django.core.validators import RegexValidator
+from phonenumber_field.formfields import PhoneNumberField
+import phonenumbers
+from django.forms import ModelForm
+from dep1.models import Verification
+PROJECT_PATH=os.path.dirname(os.path.realpath(__file__)).split("smartDNA")[0]
+ALERT_CHOICE=(
+        (1,"Tamper Alert"),
+        (2,"Periodic Scan Alert"),
+        (3,"Suspicious Duplication Alert")
+        )
+
+class PhoneField(forms.Field):
+    default_error_messages = {
+        'not_a_number': u'please provide correct number with country code e.g.:+917733230990',
+    }
+    def to_python(self, uvalue):
+       if uvalue in validators.EMPTY_VALUES:
+        return None     
+       value=str(uvalue)
+       try:
+        x = phonenumbers.parse(value, None)
+        print phonenumbers.is_possible_number(x)
+        print phonenumbers.is_valid_number(x) 
+        isvalid=phonenumbers.is_valid_number(x)
+        if isvalid:
+         return value
+        else:            
+         raise ValidationError(self.error_messages['not_a_number'])
+       except:
+        raise ValidationError(self.error_messages['not_a_number'])
+
+
+class LoginForm(forms.Form):
+  username = forms.CharField(max_length=64)
+  password = forms.CharField(max_length=64)
+ # auth = forms.CharField(max_length=64)
+
+class CheckForm(forms.Form):
+  asset_code= forms.CharField(max_length=64)
+  scan_time= forms.CharField(max_length=64)
+  credential= forms.CharField(max_length=128)
+  orrcredential= forms.CharField(max_length=32)
+  d1= forms.CharField(max_length=8)
+  d2= forms.CharField(max_length=8)
+  d3= forms.CharField(max_length=8)
+  h1=forms.CharField(max_length=8)
+  h2=forms.CharField(max_length=8)
+  h3=forms.CharField(max_length=8)
+  angle= forms.CharField(max_length=8)
+  status= forms.CharField(max_length=64)
+  operator= forms.CharField(max_length=64)
+  location= forms.CharField(max_length=128)
+  scan_auth= forms.CharField(max_length=64)
+  scan_time= forms.CharField(max_length=64)
+  email_id= forms.CharField(max_length=64)
+  bit_mask= forms.CharField(max_length=128)
+  company_name= forms.CharField(max_length=64)
+  #color_profile= forms.CharField(max_length=64)
+
+class OrrCheckForm(forms.Form):
+    username = forms.CharField(max_length=64)
+    password = forms.CharField(max_length=64)
+    asset_code= forms.CharField(max_length=64)
+    orrStatus= forms.CharField(max_length=64)
+
+class AnomalyForm(forms.Form):
+    username = forms.CharField(max_length=64)
+    password = forms.CharField(max_length=64)
+    asset_code= forms.CharField(max_length=64)
+    operator= forms.CharField(max_length=64)
+    location= forms.CharField(max_length=64)
+
+class FetchForm(forms.Form):
+  username = forms.CharField(max_length=64)
+  password= forms.CharField(max_length=64)
+  asset_code= forms.CharField(max_length=64)
+  company_name=forms.CharField(max_length=64)
+
+class UpdateDetailsForm(forms.Form):
+    username = forms.CharField(max_length=16)
+    password = forms.CharField(widget=forms.PasswordInput)
+    asset_code1 = forms.CharField(label='Asset Code(Sart)',max_length=16)
+    asset_code2 = forms.CharField(label='Asset Code(End)',max_length=16)
+    product_details = forms.CharField(max_length=64)
+#,initial='example:product name,mfg date,exp date,batch no.'
+
+class SettingsForm(forms.Form):
+    with open(PROJECT_PATH+'smartDNA/media/settings.json', 'r') as f:
+     json_data = json.load(f)    
+    #print json_data['dep_name'],json_data['dep_type']
+    dep_name = forms.CharField(label='Deployment User',max_length=128,initial=json_data['dep_name'])
+    dep_type = forms.CharField(label='Deployment Type',max_length=128,initial=json_data['dep_type'])
+    email_host = forms.CharField(label='Email Host',max_length=128,initial=json_data['email_host'])
+    email_port = forms.CharField(label='Email User',max_length=128,initial=json_data['email_port'])
+    email_username = forms.CharField(label='Email Password',max_length=128,initial=json_data['email_username'])
+    email_password = forms.CharField(label='Email Password',max_length=128,initial=json_data['email_password'])
+    cleanup_interval=forms.CharField(label='Clean-up Interval',max_length=128,initial="90")
+
+class DateRangeForm(forms.Form):
+    day1 = forms.DateField(initial=datetime.date.today()-datetime.timedelta(days=1),label="FROM")
+    day2 = forms.DateField(initial=datetime.date.today(),label="UPTO")
+#widget = SelectDateWidget
+
+class AssetCode_RangeForm(forms.Form):
+      username = forms.CharField(label="Admin",initial='admin',max_length=16)
+      password = forms.CharField(label='Password',widget=forms.PasswordInput,max_length=16)
+      max_range = forms.CharField(label='Max Limit',max_length=16)
+
+class BatchReportForm(forms.Form):
+      first_batch_id = forms.CharField(label="First Batch ID",initial='',max_length=16)
+      last_batch_id = forms.CharField(label="Last Batch ID",initial='',max_length=16)
+
+class AdminDetailsForm(forms.Form):
+    username = forms.CharField(label="Admin",max_length=16)
+    password = forms.CharField(label="Password",widget=forms.PasswordInput)
+    email_id= forms.EmailField(label="Email ID")
+    mobile_number= PhoneField(label="Mobile Number")
+    alert_type= forms.ChoiceField(label="Alert Type",choices=ALERT_CHOICE)
+
+class OrrFilterForm(forms.Form):
+    asset_code = forms.CharField(label="Asset Code",max_length=16)
+
+class periodicScanSetterForm(forms.Form):
+        username = forms.CharField(max_length=16)
+        password = forms.CharField(widget=forms.PasswordInput)
+        asset_code1 = forms.CharField(max_length=16)
+        asset_code2 = forms.CharField(max_length=16)
+        scanning_interval = forms.CharField(max_length=32,initial="4:30 hrs")
+
+class DocumentForm(forms.Form):
+      docfile = forms.FileField(label='Select a file',help_text='max. 42 megabytes')
+
+class DecorateForm(ModelForm):
+      class Meta:
+	    model = Verification
+	    #fields = ('status')
+	    #widgets = {'status': forms.TextInput(attrs={'class': 'status_column'}),}
+      def __init__(self, *args, **kwargs):
+          super(DecorateForm, self).__init__(*args, **kwargs)
+          self.fields['status'].widget.attrs.update({'class' : 'status_column'})

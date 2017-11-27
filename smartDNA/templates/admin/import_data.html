@@ -1,0 +1,188 @@
+{% extends "admin/base.html" %}
+{% load admin_static %}
+{% load url from future %}
+{% load i18n %}
+{% load suit_tags %}
+{% load smartdna_tags %}
+<head> 
+<title>{% block title %}{{'Import Data'}} | {{ 'ADMIN_NAME'|site_title}}{% endblock %}</title>
+{% block extrahead %}
+{% endblock %}
+{# Additional CSS includes #}
+{% block extrastyle %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/smartdna.css' %}" media="all">
+<style>
+div.import_form{
+  background-color: #cdcdb1;
+  width: 380px;
+}
+#help_popup {
+    display: none;
+    position: absolute;
+    z-index: 99999;
+    width: 320px;
+    top:140px;
+    left: 520px;
+    padding: 4px;
+    background: #EEEFEB;
+    color: #000000;
+    border: 1px solid #4D4F53;
+    margin: 0px;
+    -webkit-box-shadow: 0px 0px 5px 0px rgba(164, 164, 164, 1);
+    box-shadow: 0px 0px 5px 0px rgba(164, 164, 164, 1);
+}
+#help_popup_parent #help_popup {
+  display: none;
+}
+
+#help_popup_parent #help_popup {
+  display: block;
+}
+
+</style>
+{% endblock %}
+{% block extrajs %}
+<script type="text/javascript" src="{% static 'js/my_project.js' %}"></script>
+<script type="text/javascript">
+  var e = document.getElementById('help_popup_parent');
+e.onmouseover = function() {
+  document.getElementById('help_popup').style.display = 'block';
+}
+e.onmouseout = function() {
+  document.getElementById('help_popup').style.display = 'none';
+}
+</script>
+{% endblock %}
+</head>
+
+<body> 
+<div id="content-main">
+{% block content %}
+    {% if app_list %}
+      {% for app in app_list %}
+        <div class="module">
+        <table class="table-overview applist" summary="{% blocktrans with name=app.name %}Models available in the {{ name }} application.{% endblocktrans %}">
+            <caption><a href="{{ app.app_url }}" class="section">{% trans app.name %}</a></caption>
+            {% for model in app.models %}
+              <tr>
+                <th scope="row">{{ model.name }}</th>
+                {% if model.admin_url %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink icon">{% trans 'Change' %}</a>
+                  </td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+
+                {% if model.add_url %}
+                  <td><a href="{{ model.add_url }}" class="addlink icon"><i
+                          class="icon-plus-sign icon-alpha75"></i>{% trans 'Add' %}
+                  </a></td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+<div style="padding:0;" class="container-fluid">
+<form action="" method="POST" enctype="multipart/form-data">
+{% csrf_token %}
+        <div style="margin-left: 30%;" class="import_form">
+          <table>
+          <tbody>
+          <tr><td>{{ form.non_field_errors }}</td></tr>
+          <tr><td>{{ form.update_method.errors }}</td></tr>     
+          <tr><td><h3>{{ form.update_method.0 }}</h3></td></tr>
+
+          <tr><td>{{ form.prefix.errors }}</td></tr>
+          <tr><th><label for="id_prefix">{{ form.prefix.label }}
+          </label></th><td>{{ form.prefix }}</td></tr>
+          
+          <tr><td>{{ form.start_id.errors }}</td></tr>
+          <tr><th><label for="id_strt_id">{{ form.start_id.label }}
+          </label></th><td>{{ form.start_id }}</td></tr>
+
+          <tr><td>{{ form.end_id.errors }}</td></tr>
+          <tr><th><label for="id_end_id">{{ form.end_id.label }}
+          </label></th><td>{{ form.end_id }}</td></tr>
+
+          <tr><td>{{ form.product_detail.errors }}</td></tr>
+          <tr><th><label for="id_product_detail">{{ form.product_detail.label }}
+          </label></th><td>{{ form.product_detail }}</td></tr>
+          <tr><td></td></tr>
+          </tbody> 
+          </table>
+        </div>
+        <h2 style="margin-left: 45%;">OR</h2>
+        <div style="margin-left: 30%;" class="import_form">
+          <table>
+          <tbody>
+          <tr><td><h5 style="float: left;">{{ form.update_method.1 }}
+          </h5> <a href="#" id="help_popup_parent"><h5 class="help_text" style="color:blue;float: left; margin-left: 4px;">Help?</h5></a>
+          </td>
+          <tr><td>{{ form.excel_file.errors }}</td></tr>
+          <!-- <tr><th><label for="id_excel_file">{{ form.excel_file.label }} </label>-->
+          </th><td>{{ form.excel_file }}</td></tr>
+          </tbody> 
+          </table>
+        </div>
+        <div id="help_popup" style="display: none">
+        
+        <ul>
+        <li>Max records: 10000</li>
+        <li>Max. size of Product Details is 128 chars</li>
+        <li>No details will be updated if asset code provided in file is not found in database and no error will be reported</li>
+        <li>If an Asset Code is repeated in the file, the last repeated product detail will be used</li>
+        <li> If the size of product detail field exceeds the size set for this deployment, last characters exceeding defined length will be truncated. No errors will be reported for the same</li>
+        <li>First row of Microsoft Excel file should contain header as shown below</li></ul>
+        <h5 style="text-align:center;">Sample format:</h5>
+        <img src="/media/img/help_excel_file.png"></div>
+<input style="margin-left: 43%;margin-top: 1%;" class="btn btn-primary" type="submit" value="Update"/>
+</form>
+<p style="color:red;margin-left:30%;float:center;">{{message}}</p>
+{% endblock %}
+{% block footer_links %}
+ <p>{% last_login_details %}</p>
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+{% block header_content %}
+  {{ block.super }}
+<div class="header-content">
+<!-- First icon column -->
+<div class="header-column icon">
+<i class="icon-ok-circle"></i><br>
+            <!--<i class="icon-cog"></i>-->
+        </div>
+        <div class="header-column" style="margin-right: 20px">
+            <a href="/dashboard/main/" class="grey">DASHBOARD</a><br>
+            <!--<a href="" class="grey">One more link</a>-->
+        </div>
+        {% if user.is_superuser %}
+            <!-- Second icon column -->
+            <div class="header-column icon">
+                <i class="icon-cog"></i>
+            </div>
+            <div class="header-column">
+                <a href="/settings/" class="grey">Settings</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+Footer branding name (center) 
+{% block footer_branding %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+
+{# Footer copyright (right side) 
+{% block copyright %}
+Copyright &copy; 2016-17 <a href="http://www.linksmartdna.com/" target="_blank">Linksmart Technologies</a><br>
+sAMM <span>{% app_version %}</span>
+{% endblock %}
+</body>

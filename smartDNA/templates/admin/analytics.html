@@ -1,0 +1,92 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+{% load admin_static %}
+
+<head> 
+{% block extrahead %}
+{% endblock %}
+{# Additional CSS includes #}
+{% block extrastyle %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/smartdna.css' %}" media="all">
+{% endblock %}
+{% block extrajs %}
+<script type="text/javascript" src="{% static 'js/my_project.js' %}"></script>
+{% endblock %}
+</head>
+
+<body> 
+<div id="content-main">
+{% block content %}
+    {% if app_list %}
+      {% for app in app_list %}
+        <div class="module">
+        <table class="table-overview applist" summary="{% blocktrans with name=app.name %}Models available in the {{ name }} application.{% endblocktrans %}">
+            <caption><a href="{{ app.app_url }}" class="section">{% trans app.name %}</a></caption>
+            {% for model in app.models %}
+              <tr>
+                <th scope="row">{{ model.name }}</th>
+                {% if model.admin_url %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink icon">{% trans 'Change' %}</a>
+                  </td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+
+                {% if model.add_url %}
+                  <td><a href="{{ model.add_url }}" class="addlink icon"><i
+                          class="icon-plus-sign icon-alpha75"></i>{% trans 'Add' %}
+                  </a></td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+       <div class="table-responsive">
+<h2>Various Analytical views (value added service available on demand) </h2>
+<img style="float:left;width:50%;" src="/media/img/coming-soon.jpg"/>
+<!--<div style="position:fixed;left:24%;bottom:12%;background-color:yellow;">
+<h2>Data visualization shown above are just an example used for illustration and may vary according to use case.</h2></div>-->
+{% endblock %}
+{% block footer_links %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+{% block header_content %}
+  {{ block.super }}
+<div class="header-content">
+<!-- First icon column -->
+<div class="header-column icon">
+<i class="icon-home"></i><br>
+            <!--<i class="icon-cog"></i>-->
+        </div>
+        <div class="header-column" style="margin-right: 20px">
+            <a href="/" class="grey">Front-end</a><br>
+            <!--<a href="" class="grey">One more link</a>-->
+        </div>
+        <!-- Second icon column -->
+        <div class="header-column icon">
+            <i class="icon-cog"></i>
+        </div>
+        <div class="header-column">
+            <a href="/settings/" class="grey">Settings</a>
+        </div>
+    </div>
+{% endblock %}
+
+Footer branding name (center) 
+{% block footer_branding %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+
+{# Footer copyright (right side) 
+{% block copyright %}
+ Copyright &copy; 2016-17 Linksmart Technologies<br>Developed by <a href="http://www.linksmartdna.com/" target="_blank">Linksmart Technologies</a> 
+{% endblock %}
+</body>

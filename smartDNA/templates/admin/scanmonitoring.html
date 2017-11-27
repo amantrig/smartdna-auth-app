@@ -1,0 +1,139 @@
+{% extends "admin/base.html" %}
+{% load admin_static %}
+{% load url from future %}
+{% load i18n %}
+{% load suit_tags %}
+{% load smartdna_tags %}
+<head>
+<title>{% block title %}{{'Scan Analysis'}} | {{ 'ADMIN_NAME'|site_title}}{% endblock %}</title>
+{% block extrahead %}
+{% endblock %}
+{# Additional CSS includes #}
+{% block extrastyle %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/smartdna.css' %}" media="all">
+{% endblock %}
+{% block extrajs %}
+<script type="text/javascript" src="{% static 'js/jquery-1.7.2.min.js' %}"></script>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript" src="{% static 'js/smartdna_charts.js' %}"></script>
+{% endblock %}
+</head>
+
+<body>
+<div id="content-main">
+{% block content %}
+    {% if app_list %}
+      {% for app in app_list %}
+        <div class="module">
+        <table class="table-overview applist" summary="{% blocktrans with name=app.name %}Models available in the {{ name }} application.{% endblocktrans %}">
+            <caption><a href="{{ app.app_url }}" class="section">{% trans app.name %}</a></caption>
+            {% for model in app.models %}
+              <tr>
+                <th scope="row">{{ model.name }}</th>
+                {% if model.admin_url %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink icon">{% trans 'Change' %}</a>
+                  </td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+                {% if model.add_url %}
+                  <td><a href="{{ model.add_url }}" class="addlink icon"><i
+                          class="icon-plus-sign icon-alpha75"></i>{% trans 'Add' %}
+                  </a></td>
+                {% else %}
+                  <td>&nbsp;</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+<div style="padding:0;" class="container-fluid">
+
+<form action="" method="POST">{% csrf_token %}
+        <ul style="list-style-type: none;text-align:left;">
+        <li><label id="label_scan_count">Scan Count:</label>{{ form.scan_count}}</li>
+        <li><label id="label_from">FROM:</label>{{ form.day1}}</li>
+        <li><label id="label_to">UPTO:</label>{{ form.day2}}</li>
+        <li id="apply_filter" style="margin-left:1%;">
+        <input class="btn btn-high btn-info" type="submit" name="sort" value="APPLY FILTER "/></li>
+        <li id="form_message" style="color:red">{{wrange}}{{error_message}}</li></ul>
+</form>
+</br>
+<h4><span style="color:red">{{total_records}}</span> records found under selected criteria.</h4>
+<table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Asset-ID</th>
+                <th style="width:14%;">Scan time</th>
+                <th style="width:14%;">Integrity Status</th>
+                <th>Operator</th>
+                <th>Location</th>
+                <th>Mobile Number</th>
+              </tr>
+             </thead>
+            <tbody>
+              {% for record in data %}
+              <tr>
+                <td class="align-left"><a href="/status/{{ record.asset_code }}/">{{ record.asset_code }}</a></td>
+                <td style="width:14%;" class="align-left">{{record.scan_time }}</td>
+                <td style="width:14%;" class="align-left">{{ record.colored_status|safe }}</td>
+                <td class="align-left">{{ record.operator }}</td>
+                <td class="align-left">{{ record.city }}</td>
+                <td class="align-left">{{ record.auth_code }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+  </table>
+          <!-- Pagination Links -->
+  <div>
+           {% load pagination_tags %}
+         {% autopaginate pdata 50  %} 
+           {% paginate %} 
+   <span class="current">
+   Page {{ data.number }} of {{ data.paginator.num_pages }}.
+   </span>
+  </div>
+{% endblock %}
+{% block footer_links %}
+ <p>{% last_login_details %}</p>
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+
+{% block header_content %}
+  {{ block.super }}
+<div class="header-content">
+<!-- First icon column -->
+<div class="header-column icon">
+<i class="icon-ok-circle"></i><br>
+            <!--<i class="icon-cog"></i>-->
+        </div>
+        <div class="header-column" style="margin-right: 20px">
+            <a href="/dashboard/main/" class="grey">DASHBOARD</a><br>
+            <!--<a href="" class="grey">One more link</a>-->
+        </div>
+        {% if user.is_superuser %}
+            <!-- Second icon column -->
+            <div class="header-column icon">
+                <i class="icon-cog"></i>
+            </div>
+            <div class="header-column">
+                <a href="/settings/" class="grey">Settings</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+Footer branding name (center)
+{% block footer_branding %}
+<!--<a href="/docs/" class="icon"><i class="icon-question-sign"></i>Documentation</a>-->
+{% endblock %}
+{# Footer copyright (right side)
+{% block copyright %}
+Copyright &copy; 2016-17 <a href="http://www.linksmartdna.com/" target="_blank">Linksmart Technologies</a><br>
+sAMM <span>{% app_version %}</span>
+{% endblock %}
+</body>

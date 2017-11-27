@@ -1,0 +1,20 @@
+from django.contrib import admin
+from core.models import Deployment,Logger
+from django import forms
+import datetime
+
+class DeploymentAdmin(admin.ModelAdmin):
+    list_display = ('id','user','user_type','dep_name','dep_path',)
+    ordering = ('-id',)
+    list_filter    = ('dep_name','user_type',)
+    search_fields  = ('user',)
+
+class LoggerAdmin(admin.ModelAdmin):
+    list_display = ('user','login_time','city','country_name','country_code','postal_code','ip_address')
+    ordering = ('-login_time',)
+    list_filter    = ('city','country_name')
+    search_fields  = ('country_name',)
+
+admin.site.register(Deployment,DeploymentAdmin)
+admin.site.register(Logger,LoggerAdmin)
+
